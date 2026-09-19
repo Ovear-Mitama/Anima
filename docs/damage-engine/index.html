@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Damage Engine API · 模组文档</title>
+<link rel="stylesheet" href="../asset/font/css/fontawesome.min.css">
+<link rel="stylesheet" href="../asset/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="目录"><i class="fa-solid fa-bars"></i> 目录</button>
+  <a class="brand" href="../index.html">
+    <img class="logo" src="../asset/icon.png" alt="">
+    <span id="brandName">模组文档</span>
+  </a>
+  <div class="doc-select" id="docSelect">
+    <button class="doc-current" id="docBtn" type="button">
+      <span id="docLabel">Damage Engine</span><i class="fa-solid fa-chevron-down chev"></i>
+    </button>
+    <div class="doc-menu" id="docMenu"></div>
+  </div>
+  <span class="spacer"></span>
+  <div class="top-actions">
+    <!-- 语言下拉(选项由 asset/js/i18n.js 的 SITE_LANGS 渲染) -->
+    <div class="lang-select" id="langSelect">
+      <button class="lang-current" id="langBtn" type="button">
+        <span id="langLabel">简体中文</span><i class="fa-solid fa-chevron-down chev"></i>
+      </button>
+      <div class="lang-menu" id="langMenu"></div>
+    </div>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题"><i class="fa-solid fa-moon"></i></button>
+  </div>
+</header>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main id="top">
+    <section class="hero">
+      <h1 data-i18n="hero.title">Damage Engine API</h1>
+      <p class="lead" data-i18n="hero.lead">
+        为其他模组提供的扩展接口。当前包含<strong>评分 API（加分项）</strong>，后续将持续划分并扩展更多 API。
+      </p>
+    </section>
+
+    <h2 id="overview"><span data-i18n="sec.overview">简介</span><a class="anchor" href="#overview">#</a></h2>
+    <p data-i18n="overview.p1">
+      通过注册一个 <code class="inline">BonusProvider</code>，让其他模组的自定义规则参与
+      Damage Engine 的评分（Rating）计算——<strong>加分条件由你自己的模组定义</strong>。
+    </p>
+    <p data-i18n="overview.p2">
+      Damage Engine 只负责在每次命中时回调所有已注册的加分项并累加返回值，具体在什么条件下加分、加多少分，完全由你的模组决定。
+    </p>
+    <div class="callout note">
+      <strong data-i18n="overview.note.label">提示：</strong>
+      <span data-i18n="overview.note.body">API 位于 <code class="inline">damage.engine.api</code> 包，Fabric 与 NeoForge 通用，注册方式完全一致。</span>
+    </div>
+
+    <h2 id="requirements"><span data-i18n="sec.requirements">前置条件</span><a class="anchor" href="#requirements">#</a></h2>
+    <p data-i18n="requirements.text">适用于 Damage Engine 1.4.7+（含）。</p>
+
+    <h2 id="quickstart"><span data-i18n="sec.quickstart">快速开始</span><a class="anchor" href="#quickstart">#</a></h2>
+    <ol>
+      <li data-i18n="quick.li1">在你的模组初始化阶段引入 <code class="inline">damage.engine.api.DamageEngineApi</code>。</li>
+      <li data-i18n="quick.li2">调用 <code class="inline">DamageEngineApi.registerBonusProvider(...)</code> 注册加分项。</li>
+      <li data-i18n="quick.li3">每次命中时，Damage Engine 会回调你的 <code class="inline">bonusOnHit(...)</code>，返回值即为该次命中增加的分数。</li>
+      <li data-i18n="quick.li4">打开配置界面 → <strong>评分</strong> → <strong>其他mod加分项</strong>，可看到已注册的加分项列表。</li>
+    </ol>
+
+    <h3 data-i18n="quick.deps.title">添加依赖</h3>
+    <p data-i18n="quick.deps.p">将 Damage Engine 作为编译期依赖（按你使用的发布渠道替换坐标）：</p>
+    <div class="code-head"><span>build.gradle</span><button class="copy-btn" data-i18n="btn.copy">复制</button></div>
+    <pre><code>dependencies {
+    <span data-i18n="code.gradle.c1">// 若通过 Maven 发布，替换为实际坐标</span>
+    modImplementation "damage.engine:damage-engine:1.4.7"
+    <span data-i18n="code.gradle.c2">// 或者直接引用本地 jar</span>
+    // modCompileOnly files("libs/damage-engine-1.4.7.jar")
+}</code></pre>
+    <div class="callout tip">
+      <strong data-i18n="quick.tip.label">建议：</strong>
+      <span data-i18n="quick.tip.body">加分项 API 只在运行时生效，推荐使用 <code class="inline">compileOnly</code> / <code class="inline">modCompileOnly</code>，并在 <code class="inline">fabric.mod.json</code> / <code class="inline">neoforge.mods.toml</code> 中声明可选依赖。</span>
+    </div>
+
+    <h2 id="register"><span data-i18n="sec.register">注册加分项</span><a class="anchor" href="#register">#</a></h2>
+    <p data-i18n="register.p">最小示例：单次伤害 ≥ 100 时额外 +50 分。</p>
+    <div class="code-head"><span>ExampleMod.java</span><button class="copy-btn" data-i18n="btn.copy">复制</button></div>
+    <pre><code>import damage.engine.api.DamageEngineApi;
+
+public final class ExampleMod {
+    public static void init() {
+        DamageEngineApi.registerBonusProvider(new DamageEngineApi.BonusProvider() {
+            @Override
+            public String id() {
+                return "example_mod:heavy_hit";
+            }
+
+            @Override
+            public String displayName() {
+                return "<span data-i18n="code.example.name">重击额外加分</span>";
+            }
+
+            @Override
+            public float bonusOnHit(DamageEngineApi.Hit hit, DamageEngineApi.SessionStats session) {
+                return hit.damage() >= 100f ? 50f : 0f;
+            }
+        });
+    }
+}</code></pre>
+
+    <h2 id="reference"><span data-i18n="sec.reference">API 参考</span><a class="anchor" href="#reference">#</a></h2>
+
+    <h3>DamageEngineApi</h3>
+    <table>
+      <thead><tr><th data-i18n="ref.th.method">方法</th><th data-i18n="ref.th.desc">说明</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code class="inline">static boolean registerBonusProvider(BonusProvider provider)</code></td>
+          <td data-i18n="ref.api.r1">注册一个加分项。同一 <code class="inline">id()</code> 只注册一次，重复注册会被忽略并返回 <code class="inline">false</code>。</td>
+        </tr>
+        <tr>
+          <td><code class="inline">static List&lt;BonusProvider&gt; getBonusProviders()</code></td>
+          <td data-i18n="ref.api.r2">返回当前已注册的全部加分项（只读）。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>DamageEngineApi.BonusProvider</h3>
+    <table>
+      <thead><tr><th data-i18n="ref.th.method">方法</th><th data-i18n="ref.th.desc">说明</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">String id()</code></td><td data-i18n="ref.bp.r1">唯一标识，建议使用 <code class="inline">命名空间:路径</code> 形式；用于去重与界面展示。</td></tr>
+        <tr><td><code class="inline">String displayName()</code></td><td data-i18n="ref.bp.r2">在配置界面“其他mod加分项”中展示的名称。</td></tr>
+        <tr><td><code class="inline">float bonusOnHit(Hit hit, SessionStats session)</code></td><td data-i18n="ref.bp.r3">每次命中时计算加分；返回 <code class="inline">0</code> 或负数表示不加分。</td></tr>
+      </tbody>
+    </table>
+
+    <h3>DamageEngineApi.Hit</h3>
+    <table>
+      <thead><tr><th data-i18n="ref.th.member">成员</th><th data-i18n="ref.th.type">类型</th><th data-i18n="ref.th.desc">说明</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">damage()</code></td><td><code class="inline">float</code></td><td data-i18n="ref.hit.r1">本次命中造成的伤害</td></tr>
+        <tr><td><code class="inline">crit()</code></td><td><code class="inline">boolean</code></td><td data-i18n="ref.hit.r2">本次命中是否被判定为暴击</td></tr>
+      </tbody>
+    </table>
+
+    <h3>DamageEngineApi.SessionStats</h3>
+    <table>
+      <thead><tr><th data-i18n="ref.th.member">成员</th><th data-i18n="ref.th.type">类型</th><th data-i18n="ref.th.desc">说明</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">comboCount()</code></td><td><code class="inline">int</code></td><td data-i18n="ref.ss.r1">当前连击数</td></tr>
+        <tr><td><code class="inline">hitCount()</code></td><td><code class="inline">int</code></td><td data-i18n="ref.ss.r2">命中次数（含暴击）</td></tr>
+        <tr><td><code class="inline">critCount()</code></td><td><code class="inline">int</code></td><td data-i18n="ref.ss.r3">暴击次数</td></tr>
+        <tr><td><code class="inline">totalDamage()</code></td><td><code class="inline">float</code></td><td data-i18n="ref.ss.r4">本次评分会话的累计伤害</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="example"><span data-i18n="sec.example">完整示例</span><a class="anchor" href="#example">#</a></h2>
+    <p data-i18n="example.p">条件完全自定义：连击 ≥ 5 的暴击额外加分，且对单次高额伤害追加奖励。</p>
+    <div class="code-head"><span>MyBonus.java</span><button class="copy-btn" data-i18n="btn.copy">复制</button></div>
+    <pre><code>import damage.engine.api.DamageEngineApi;
+
+public final class MyBonus {
+
+    public static void register() {
+        DamageEngineApi.registerBonusProvider(new DamageEngineApi.BonusProvider() {
+
+            @Override
+            public String id() {
+                return "mymod:combo_crit";
+            }
+
+            @Override
+            public String displayName() {
+                return "<span data-i18n="code.bonus.name">连击暴击奖励</span>";
+            }
+
+            @Override
+            public float bonusOnHit(DamageEngineApi.Hit hit, DamageEngineApi.SessionStats session) {
+                float bonus = 0f;
+
+                <span data-i18n="code.bonus.c1">// 条件 1：连击 ≥ 5 且本次为暴击</span>
+                if (session.comboCount() >= 5 && hit.crit()) {
+                    bonus += 15f;
+                }
+
+                <span data-i18n="code.bonus.c2">// 条件 2：本次伤害超过 50</span>
+                if (hit.damage() > 50f) {
+                    bonus += 10f;
+                }
+
+                <span data-i18n="code.bonus.c3">// 条件 3：整场累计伤害达到阈值后额外奖励</span>
+                if (session.totalDamage() >= 500f) {
+                    bonus += 25f;
+                }
+
+                return bonus;
+            }
+        });
+    }
+}</code></pre>
+
+    <h2 id="ingame"><span data-i18n="sec.ingame">在游戏内查看</span><a class="anchor" href="#ingame">#</a></h2>
+    <p data-i18n="ingame.p">
+      打开配置界面（默认按键可在“按键”标签页查看），进入 <strong>评分</strong> 标签页，
+      展开“单次伤害大小加分”下方的 <strong>其他mod加分项</strong>：
+    </p>
+    <ul>
+      <li data-i18n="ingame.li1">已注册的加分项会以 <code class="inline">显示名 (id)</code> 的形式列出；</li>
+      <li data-i18n="ingame.li2">若没有任何模组注册加分项，该分组内会显示一行占位提示。</li>
+    </ul>
+
+    <h2 id="notes"><span data-i18n="sec.notes">注意事项</span><a class="anchor" href="#notes">#</a></h2>
+    <ul>
+      <li data-i18n="notes.li1"><strong>幂等注册：</strong><code class="inline">id()</code> 相同的加分项只注册一次，适合在模组初始化时无条件调用。</li>
+      <li data-i18n="notes.li2"><strong>异常隔离：</strong>单个加分项抛出异常不会影响整体评分，但请尽量保证实现健壮。</li>
+      <li data-i18n="notes.li3"><strong>调用次数：</strong>每次命中会对“每个已注册加分项”调用一次 <code class="inline">bonusOnHit</code>，请保持实现轻量。</li>
+      <li data-i18n="notes.li4"><strong>评分在客户端计算：</strong>加分项用于本地评分显示，请勿在其中执行昂贵的网络或世界操作。</li>
+      <li data-i18n="notes.li5"><strong>条件自定义：</strong>Damage Engine 只负责在命中时回调并累加返回值，具体加分规则完全由你的模组实现。</li>
+    </ul>
+
+    <footer class="foot">
+      <span data-i18n="footer.text">Damage Engine API · 适用于 Damage Engine 1.4.7+（含）</span>
+    </footer>
+  </main>
+</div>
+
+<script src="../asset/js/i18n.js"></script>
+<script src="../asset/js/nav.js"></script>
+<script src="../asset/js/app.js"></script>
+
+</body>
+</html>

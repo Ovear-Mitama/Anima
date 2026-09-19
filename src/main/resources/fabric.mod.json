@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "anima",
+	"version": "${version}",
+	"name": "Anima｜赋灵",
+	"description": "A library that brings your text and textures to life in the world!",
+	"authors": [
+		"mitama"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "Apache-2.0",
+	"icon": "assets/anima/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"anima.fabric.AnimaFabric"
+		],
+		"client": [
+			"anima.client.AnimaClient"
+		],
+		"modmenu": [
+			"anima.compat.modmenu.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		{
+			"config": "anima.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

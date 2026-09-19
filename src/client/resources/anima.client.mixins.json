@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "anima.mixin.client",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"FontStringRenderOutputMixin",
+		"ClientResourceManagerMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

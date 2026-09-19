@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>兼容性与 FAQ · Anima｜赋灵</title>
+<link rel="stylesheet" href="../asset/font/css/fontawesome.min.css">
+<link rel="stylesheet" href="../asset/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="目录"><i class="fa-solid fa-bars"></i> 目录</button>
+  <a class="brand" href="../index.html">
+    <img class="logo" src="../asset/icon.png" alt="">
+    <span id="brandName">模组文档</span>
+  </a>
+  <div class="doc-select" id="docSelect">
+    <button class="doc-current" id="docBtn" type="button">
+      <span id="docLabel">兼容性与 FAQ</span><i class="fa-solid fa-chevron-down chev"></i>
+    </button>
+    <div class="doc-menu" id="docMenu"></div>
+  </div>
+  <span class="spacer"></span>
+  <div class="top-actions">
+    <!-- 语言下拉(选项由 asset/js/i18n.js 的 SITE_LANGS 渲染) -->
+    <div class="lang-select" id="langSelect">
+      <button class="lang-current" id="langBtn" type="button">
+        <span id="langLabel">简体中文</span><i class="fa-solid fa-chevron-down chev"></i>
+      </button>
+      <div class="lang-menu" id="langMenu"></div>
+    </div>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题"><i class="fa-solid fa-moon"></i></button>
+  </div>
+</header>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main id="top">
+    <section class="hero">
+      <h1>兼容性与 FAQ</h1>
+      <p class="lead">渲染 mod、资源包优先级、联机、性能，以及一些容易踩的坑。</p>
+    </section>
+
+    <h2 id="compat">渲染相关<a class="anchor" href="#compat">#</a></h2>
+    <table>
+      <thead><tr><th>环境</th><th>情况</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Sodium / Sodium Extra</td>
+          <td><strong>兼容。</strong>GUI / HUD 层的绘制完全不受影响；世界内精灵帧序列是通过向资源栈注入 <code class="inline">.png.mcmeta</code> 实现的，和原版共用同一条 atlas 管线。</td>
+        </tr>
+        <tr>
+          <td>Iris / 光影</td>
+          <td><strong>兼容。</strong>理由同上：动画元数据走的是原版纹理管线，不额外插渲染 pass。</td>
+        </tr>
+        <tr>
+          <td>其它 GUI / HUD mod</td>
+          <td>Anima 只在被调用时绘制，不抢占任何全局渲染阶段，正常共存。</td>
+        </tr>
+        <tr>
+          <td>真 3D 世界文字</td>
+          <td>用的是原版字体渲染 + 相机的姿态矩阵，因此有正常的透视与深度遮挡，也跟随 FOV / 缩放设置。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="packs">资源包与优先级<a class="anchor" href="#packs">#</a></h2>
+    <ul>
+      <li><strong>注入位置：</strong>Anima 生成的动画元数据位于资源栈顶层，因此会<strong>覆盖</strong>低优先级资源包对同一张纹理的动画定义。</li>
+      <li><strong>配置覆盖：</strong><code class="inline">config/anima/animations/</code> 里的定义优先于所有资源包；想恢复资源包原定义，在动画编辑器里点「删除/重置」。</li>
+      <li><strong>重载：</strong><code class="inline">world_sprite</code> 的改动要在 <kbd>F3</kbd>+<kbd>T</kbd> 之后生效，与原版动画一致。</li>
+    </ul>
+
+    <h2 id="server">服务端<a class="anchor" href="#server">#</a></h2>
+    <ul>
+      <li>Anima 的功能全部在<strong>客户端</strong>运行，服务器上可以不装；装了也只是多注册一次引擎，没有任何副作用。</li>
+      <li>联机时客户端各装各的即可，不会因为服务端没有 Anima 而失效。</li>
+      <li>库自身不发送任何网络包。</li>
+    </ul>
+
+    <h2 id="faq">常见问题<a class="anchor" href="#faq">#</a></h2>
+
+    <h3>按 F7 没反应 / 直接进了另一个世界？</h3>
+    <p>
+      这是因为编辑器需要真实世界渲染：如果你在主菜单（不在存档里），Anima 会先把 <code class="inline">anima-config</code> 配置世界建好并把你带进去，
+      进去之后再按一次 <kbd>F7</kbd> 就会弹出编辑浮窗。这个沙盒世界与你的存档互不影响。
+    </p>
+
+    <h3>编辑器里没有字，只有坐标轴？</h3>
+    <ul>
+      <li>确认在世界里（浮窗模式），中间区域在完整界面模式下才会画预览画布；</li>
+      <li>检查属性面板里<strong>透明度</strong>是不是被调到了 0；</li>
+      <li>视角可能正对着文字的背面 —— 用 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或右键拖动绕一圈看看。</li>
+    </ul>
+
+    <h3>坐标轴拖不动 / 某根轴不见了？</h3>
+    <p>
+      正对相机的那根轴会收缩并隐藏（避免出现方向没有意义的斜线），转一下视角它就会回来。另外坐标轴只在世界的浮窗预览里可用。
+    </p>
+
+    <h3>改了属性，时间线长度也跟着变了？</h3>
+    <p>
+      时间线长度<strong>只由「文本时长」决定</strong>：它等于你手动填的值，或者最靠后的那个文本关键帧的时间，都没有时用 3 秒兜底。
+      改某一条动画的时长不会改变整条时间线，动画条会被夹在时间线内。
+    </p>
+
+    <h3>粒子设了 1 个却像一直在刷？</h3>
+    <p>
+      「数量」是这条动画<strong>整段</strong>要发射的总数（1 = 只发一个），不是每帧的数量。如果数量被改大，前面已经发射过的部分不会重复补发。
+    </p>
+
+    <h3><code class="inline">dust</code> / <code class="inline">block</code> 这类粒子发不出来？</h3>
+    <p>它们需要额外参数（颜色 / 方块状态），目前不支持，属性面板会提示「未知粒子」。用不带参数的粒子代替即可。</p>
+
+    <h3>动画触发了但只动一下就不动了？</h3>
+    <p>
+      标签式自动动画只支持<strong>循环型</strong>特效（<code class="inline">blink</code> / <code class="inline">pulse</code> / <code class="inline">shake</code> / 循环淡入淡出）。
+      一次性的淡入或位移请用显式 API（<code class="inline">drawHudText</code> / <code class="inline">drawWorldText3D</code>），并且每次触发新建一个实例。
+    </p>
+
+    <h3>想用别的语言 / 改界面文字？</h3>
+    <p>
+      编辑器界面自带中文与英文（<code class="inline">assets/anima/lang/zh_cn.json</code>、<code class="inline">en_us.json</code>）。
+      在资源包里放一份同 key 的 <code class="inline">&lt;语言代码&gt;.json</code> 就能覆盖（key 以 <code class="inline">anima.ui.</code> 开头）。
+    </p>
+
+    <h3>能从旧版本升级吗？</h3>
+    <p>
+      可以。模组改名为 Anima 之后，从 <code class="inline">texture-animation-library</code> 时期的配置目录会<strong>自动迁移</strong>，
+      已保存的动画、时间线、粒子组都不会丢。
+    </p>
+
+    <h2 id="performance">性能与开销<a class="anchor" href="#performance">#</a></h2>
+    <ul>
+      <li>动画计算是纯算术，没有额外分配；不订阅事件时开销为零。</li>
+      <li>只在<strong>被调用 / 被绘制</strong>时才工作：不做全局的每帧遍历，也不 hook 渲染管线。</li>
+      <li>世界内精灵用的是原版动画机制，性能特征与材质包动画相同。</li>
+      <li>编辑器本身只在打开时消耗资源（含实时的世界预览渲染）。</li>
+    </ul>
+
+    <footer class="foot">
+      <span>Anima｜赋灵 · Minecraft 1.21.1 · Fabric / NeoForge · Apache-2.0</span>
+    </footer>
+  </main>
+</div>
+
+<script src="../asset/js/i18n.js"></script>
+<script src="../asset/js/nav.js"></script>
+<script src="../asset/js/app.js"></script>
+
+</body>
+</html>
