@@ -28,10 +28,6 @@ public class FontStringRenderOutputMixin {
 	@Mutable
 	private float a;
 
-	@Shadow
-	@Final
-	private float dimFactor;
-
 	@Unique
 	private boolean tal$baseAlphaInit;
 
@@ -40,15 +36,15 @@ public class FontStringRenderOutputMixin {
 
 	@ModifyVariable(method = "accept", at = @At("HEAD"), argsOnly = true, index = 2)
 	private Style tal$applyAnimatedStyle(Style style) {
-		String tag = AnimatedTextStyle.tagFromMarker(style.getFont());
-		if (tag == null) {
-			tal$ensureBaseAlpha();
-			this.a = tal$baseAlpha;
-			return style;
+		// `a` is shared by every glyph of this draw call, so remember the alpha the color
+		// started with before any of our writes overwrite it.
+		if (!tal$baseAlphaInit) {
+			tal$baseAlphaInit = true;
+			tal$baseAlpha = this.a;
 		}
-		TextAnimationSpec spec = AnimatedTextStyle.get(tag);
+		String tag = AnimatedTextStyle.tagFromMarker(style.getFont());
+		TextAnimationSpec spec = tag == null ? null : AnimatedTextStyle.get(tag);
 		if (spec == null) {
-			tal$ensureBaseAlpha();
 			this.a = tal$baseAlpha;
 			return style;
 		}
@@ -57,16 +53,11 @@ public class FontStringRenderOutputMixin {
 		int rgb = (Math.round(clamp01(modifier.r) * 255f) << 16)
 			| (Math.round(clamp01(modifier.g) * 255f) << 8)
 			| Math.round(clamp01(modifier.b) * 255f);
-		this.a = clamp01(modifier.a) * this.dimFactor;
+		// Alpha must NOT be scaled by the output's drop-shadow brightness factor: vanilla only
+		// dims the shadow pass' RGB with it, so scaling alpha here made animated text lose its
+		// shadow (that pass would run at 25% opacity).
+		this.a = clamp01(modifier.a) * tal$baseAlpha;
 		return style.withFont(Style.DEFAULT_FONT).withColor(TextColor.fromRgb(rgb));
-	}
-
-	@Unique
-	private void tal$ensureBaseAlpha() {
-		if (!tal$baseAlphaInit) {
-			tal$baseAlphaInit = true;
-			tal$baseAlpha = this.a;
-		}
 	}
 
 	@Unique
