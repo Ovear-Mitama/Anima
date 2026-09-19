@@ -32,6 +32,10 @@ bin/
 
 run/
 
+# 文档站(实际维护在 Ovear-Mitama.github.io 仓库里,不跟着本模组一起发)
+
+docs/
+
 # java
 
 hs_err_*.log
