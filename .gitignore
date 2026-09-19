@@ -32,9 +32,6 @@ bin/
 
 run/
 
-# local agent session logs
-.reasonix/
-
 # java
 
 hs_err_*.log
