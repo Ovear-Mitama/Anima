@@ -107,7 +107,9 @@ public final class WorldText3D {
 					m.rotateZ(g.rot);
 				}
 				int col = (Math.round(baseA * a) << 24) | rgb;
-				font.drawInBatch(ch, -w / 2f, -GLYPH_HALF, col, false, m, buffers,
+				// dropShadow = true：交给原版 drawInBatch 画阴影（颜色 ×0.25、字形偏移 1px 的那一遍），
+				// 3D 文字因此和 HUD 文字一样有阴影。之前这里传的是 false，跳字 / 编辑器预览都没有阴影。
+				font.drawInBatch(ch, -w / 2f, -GLYPH_HALF, col, true, m, buffers,
 					Font.DisplayMode.NORMAL, 0, LightTexture.FULL_BRIGHT);
 				drawn = true;
 			}
@@ -188,7 +190,8 @@ public final class WorldText3D {
 					m.rotateZ(g.rot);
 				}
 				int col = (Math.round(baseA * a) << 24) | rgb;
-				font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
+				// 同上：阴影交给原版 drawInBatch，逐字动画（位移 / 缩放 / 旋转）下阴影跟着字一起动。
+				font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, true, m, buffers,
 					mode, 0, LightTexture.FULL_BRIGHT);
 				drawn = true;
 			}
