@@ -135,7 +135,10 @@ public class DecimalField extends EditBox {
 		// blinking caret (only every other 500ms) when focused — aligned with the digits, which
 		// are drawn one size bigger and raised, so the caret sits slightly above the baseline
 		if (foc && (System.currentTimeMillis() / 500L) % 2L == 0L) {
-			int caretX = x + 1 + Math.round(font.width(v) * 1.12f) + 1;
+			// 光标要画在真实的插入点，而不是永远画在末尾 —— 否则左右方向键移动光标时
+			// 看起来光标没动，实际插入位置已经变了
+			String before = v.substring(0, Math.max(0, Math.min(getCursorPosition(), v.length())));
+			int caretX = x + 1 + Math.round(font.width(before) * 1.12f) + 1;
 			g.fill(caretX, y, caretX + 1, lineY - 2, GuiTheme.ACCENT);
 		}
 	}

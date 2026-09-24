@@ -33,7 +33,7 @@ Particle groups and exported timelines live under `config/anima/` as plain JSON,
 
 ## In-game editor
 
-Press the "Open Animation Editor" key to open / close the timeline editor — it is **unbound by default**, bind it under Options → Controls → Miscellaneous. Inside a world it opens as a floating window and the world keeps rendering, so you can tune things while looking at them. There is also a separate "Play / Pause (editor)" key, also unbound by default (Space does the same thing while the editor is focused).
+Press the "Open Animation Editor" key to open / close the timeline editor — it is **unbound by default**, bind it under Options → Controls → Anima. Inside a world it opens as a floating window and the world keeps rendering, so you can tune things while looking at them. There is also a separate "Play / Pause (editor)" key, also unbound by default (Space does the same thing while the editor is focused).
 
 Inside a world the editor's preview is drawn by the real world renderer: 3D text and particle clips are painted in the world itself (with depth, so blocks occlude them). That only happens inside the dedicated sandbox world `anima-config` (superflat, spectator, fixed time, created on first use, never touches your saves). Enter it from code with `AnimaApi.enterConfigWorld(parent)`; `AnimaApi.isConfigWorld()` tells you whether you are already there (there is no button for it in the UI). The library does **not** gate the editors behind it — a mod that wants to require the world writes its own prompt and button.
 
@@ -289,7 +289,7 @@ Anima 是 Minecraft 1.21.1 的客户端动画库，给 GUI 贴图、世界内精
 
 ## 游戏内编辑器
 
-用「打开动画编辑器」按键打开 / 关闭时间线编辑器——它**默认未指定**，请在「选项 → 按键控制 → 杂项」里绑定。在世界里它以浮窗形式打开，世界继续渲染，可以边看边调。另有独立的「播放 / 暂停（编辑器）」按键，同样默认未指定（编辑器获得焦点时空格效果相同）。
+用「打开动画编辑器」按键打开 / 关闭时间线编辑器——它**默认未指定**，请在「选项 → 按键控制 → Anima」里绑定。在世界里它以浮窗形式打开，世界继续渲染，可以边看边调。另有独立的「播放 / 暂停（编辑器）」按键，同样默认未指定（编辑器获得焦点时空格效果相同）。
 
 在世界的浮窗编辑器里，预览由真实世界渲染器绘制：3D 文字和粒子动画条直接画在世界中（有深度，会被方块遮挡）。这套只在专用沙盒世界 `anima-config` 里生效（超平坦、旁观、时间固定、首次使用自动创建，不影响你的存档）：代码里用 `AnimaApi.enterConfigWorld(parent)` 进入，`AnimaApi.isConfigWorld()` 判断当前是否已经在里面（界面上没有进世界的按钮）。本库**不再**给编辑器加门槛——需要强制玩家进世界的模组自己写提示和按钮。
 

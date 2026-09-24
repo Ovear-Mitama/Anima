@@ -164,6 +164,7 @@
 	"anima.ui.type.text": "文本",
 	"anima.ui.type.world_sprite": "世界内精灵",
 	"anima.ui.type.world_sprite_hint": "世界内精灵动画 (F3+T 重载后生效)",
+	"key.categories.anima": "Anima",
 	"key.anima.editor": "打开动画编辑器",
 	"key.anima.play_pause": "播放 / 暂停（编辑器）"
 }

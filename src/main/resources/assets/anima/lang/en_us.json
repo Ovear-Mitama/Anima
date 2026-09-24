@@ -164,6 +164,7 @@
 	"anima.ui.type.text": "Text",
 	"anima.ui.type.world_sprite": "World sprite",
 	"anima.ui.type.world_sprite_hint": "World sprite animation (takes effect after an F3+T reload)",
+	"key.categories.anima": "Anima",
 	"key.anima.editor": "Open Animation Editor",
 	"key.anima.play_pause": "Play / Pause (editor)"
 }

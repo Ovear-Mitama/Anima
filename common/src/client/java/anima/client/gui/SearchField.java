@@ -48,7 +48,9 @@ public class SearchField extends EditBox {
 			g.drawString(font, v, x + 1, y + 2, GuiTheme.TEXT);
 		}
 		if (foc && (System.currentTimeMillis() / 500L) % 2L == 0L) {
-			int caretX = x + 1 + font.width(v);
+			// 光标画在真实的插入点，而不是永远画在末尾（否则方向键移动光标时看不出来）
+			String before = v.substring(0, Math.max(0, Math.min(getCursorPosition(), v.length())));
+			int caretX = x + 1 + font.width(before);
 			g.fill(caretX, y, caretX + 1, lineY - 1, GuiTheme.ACCENT);
 		}
 	}

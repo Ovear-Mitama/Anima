@@ -11,18 +11,21 @@ import net.minecraft.client.Minecraft;
  * 客户端按键绑定入口：不开 Mod Menu 也能进编辑器（NeoForge 同样走这里）。
  * 平台入口负责注册这两个 {@link KeyMapping}，并每 tick 调用 {@link #handle()}。
  * <p>
- * 两个按键<b>默认都未指定</b>，请在「选项 → 按键控制 → 杂项」里自行绑定。
+ * 两个按键<b>默认都未指定</b>，请在「选项 → 按键控制 → Anima」里自行绑定。
  */
 public final class EditorKeybinds {
+	/** 按键绑定界面里本库自己的分类 —— 塞进原版「杂项」时很难被找到。 */
+	public static final String CATEGORY = "key.categories.anima";
+
 	/** 打开 / 关闭动画编辑器（时间线界面）。默认未指定。 */
 	public static final KeyMapping OPEN_EDITOR = new KeyMapping(
 		"key.anima.editor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN,
-		"key.categories.misc");
+		CATEGORY);
 
 	/** 编辑器内播放 / 暂停。默认未指定（编辑器里空格也能播放 / 暂停）。 */
 	public static final KeyMapping PLAY_PAUSE = new KeyMapping(
 		"key.anima.play_pause", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN,
-		"key.categories.misc");
+		CATEGORY);
 
 	private EditorKeybinds() {
 	}

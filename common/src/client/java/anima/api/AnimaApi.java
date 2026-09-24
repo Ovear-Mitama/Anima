@@ -18,6 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 import anima.Anima;
 import anima.client.gui.ClipEditorResult;
 import anima.client.gui.CompositeEditScreen;
+import anima.client.world.ClipParticles;
 import anima.client.world.TextSpread;
 import anima.client.world.WorldParticles;
 import anima.client.world.WorldProjection;
@@ -289,6 +290,17 @@ public final class AnimaApi {
 	/** 该粒子注册名能否被发射（参数化粒子如 dust/block 不支持，会返回 false）。 */
 	public static boolean isParticleSupported(String registryId) {
 		return WorldParticles.optionsOf(registryId) != null;
+	}
+
+	/**
+	 * 解析编辑器导出的「粒子剪辑」JSON（{@code particle_3d} / {@code particle_group}），
+	 * 得到可复用的 {@link ClipParticles} 模板：每个动画实例用 {@code newPlayer()} 建一个播放器，
+	 * 再用同一个毫秒时钟调用 {@code emit(x, y, z, timeMs)} 就会按剪辑的时间发射真实 3D 粒子。
+	 * <p>
+	 * 这样编辑器里拖进来的粒子在<b>实际使用</b>时也会出现（不只是预览）。
+	 */
+	public static ClipParticles particleClips(JsonArray clips) {
+		return ClipParticles.parse(clips);
 	}
 
 	// ------------------------------------------------------------------ 纹理文字（贴图拼数字）

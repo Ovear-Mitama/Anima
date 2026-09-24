@@ -246,10 +246,12 @@ public class CompositeEditScreen extends Screen {
 	private double frozenPxPerMs = -1;                        // 调整窗口大小时冻结的比例
 	private final List<DecimalField> propFields = new ArrayList<>(); // 五个对象属性输入框
 	private NumberField textDurField;                                 // 文本时长（时间线长度）输入框
+	private NumberField clipDurField;                                 // 所选动画条的「动画时长」输入框（拖动绿条时实时跟随）
 	private boolean updatingFields;                           // 守卫：setValue 不得回写
 	/** 为属性面板创建的控件在 {@code children()} 中的下标范围。 */
 	private int propWidgetFrom, propWidgetTo;
 	private int propScroll;                                   // 属性面板滚动偏移（px）
+	private String lastPropSelectionKey;                      // 上次构建属性面板时的选择标识（用于换对象时把滚动归零）
 	private boolean particleListOpen;                        // 注册表粒子选择器已展开
 	private int particleListScroll;
 	private String particleSearch = "";                      // 选择器搜索过滤文本（实时）
@@ -788,8 +790,11 @@ public class CompositeEditScreen extends Screen {
 			// 还原 dumpClips 时存下的粒子 id 与参数（没有则为默认）
 			String particle = o.has("particle") ? o.get("particle").getAsString() : "";
 			String params = o.has("params") ? o.get("params").getAsString() : "{}";
+			// 自定义名称（dumpClips 里存为 name）；没有就用预设名
+			String name = o.has("name") && !o.get("name").getAsString().isBlank()
+				? o.get("name").getAsString() : paletteName(effect);
 			List<CompositeClip> lane = new ArrayList<>();
-			lane.add(new CompositeClip(effect, paletteName(effect), particle, speed, dur, start, params));
+			lane.add(new CompositeClip(effect, name, particle, speed, dur, start, params));
 			lanes.add(lane);
 		}
 	}
@@ -872,6 +877,10 @@ public class CompositeEditScreen extends Screen {
 			o.addProperty("start", c.startMs());
 			o.addProperty("duration", c.durationMs());
 			o.addProperty("speed", c.speed());
+			// 自定义名称必须一起存 —— 否则重新打开编辑器时名字会被重置回预设名
+			if (c.displayName() != null && !c.displayName().isBlank()) {
+				o.addProperty("name", c.displayName());
+			}
 			// 粒子 id 与参数（粒子类型、组内容、偏移等）必须一起存，否则重载时粒子会
 			// 回退到默认值（minecraft:flame）——「保存退出后粒子又变成火」就是这样来的。
 			if (c.particle() != null && !c.particle().isBlank()) {
@@ -1129,6 +1138,14 @@ public class CompositeEditScreen extends Screen {
 		// 使按钮/输入框永远不会超出面板
 		int pw = PROP_W - PROP_INSET - 8;
 		int wy = propDy;
+		clipDurField = null; // 下面按需重建；旧控件可能已被 clearWidgets 移除
+		// 换了对象就把属性面板的滚动拉回顶部：否则新面板会带着上一个对象的滚动偏移，
+		// 顶部几行被推出可视区，看起来像排布乱了
+		String selKey = propSelectionKey();
+		if (!selKey.equals(lastPropSelectionKey)) {
+			lastPropSelectionKey = selKey;
+			propScroll = 0;
+		}
 		if (selectedClip != null && !hasGroupChild()) {
 			// 可编辑的时间线名称（显示在动画条色块上的标签）。只有真正的修改才会
 			// 被应用：init() 会重新填充此输入框，而程序化的 setValue 不得替换
@@ -1218,8 +1235,11 @@ public class CompositeEditScreen extends Screen {
 			}
 		}
 		if (!hasGroupChild()) {
-			addRenderableWidget(new NumberField(this.font, wx, wy + durY(), pw, FIELD_H, 16, Math.max(16, timelineLen), 50, L10n.tr("anima.ui.prop.duration"), Math.round(selectedClip.durationMs()),
-				v -> { if (selectedClip != null) setClip(selectedClip, selectedClip.withDuration(v)); }));
+			// 动画时长：拖动时间线两端的绿条时由 refreshPropFields() 实时回填，
+			// 因此程序化 setValue 不得再回写（否则每帧都会替换动画条实例）
+			clipDurField = new NumberField(this.font, wx, wy + durY(), pw, FIELD_H, 16, Math.max(16, timelineLen), 50, L10n.tr("anima.ui.prop.duration"), Math.round(selectedClip.durationMs()),
+				v -> { if (!updatingFields && selectedClip != null) setClip(selectedClip, selectedClip.withDuration(v)); });
+			addRenderableWidget(clipDurField);
 			addRenderableWidget(ThemeButton.of(wx, wy + removeY(), pw, FIELD_H, Component.literal(L10n.tr("anima.ui.button.remove_clip")), b -> {
 				if (selectedClip != null) {
 					removeClip(selectedClip);
@@ -1980,6 +2000,9 @@ public class CompositeEditScreen extends Screen {
 		if (super.mouseClicked(mouseX, mouseY, button)) {
 			return true;
 		}
+		// 没点到任何控件（点了时间线 / 空白 / 世界）→ 让输入框失焦。
+		// 否则焦点还在框里，之后按 WASD、空格、Delete 都会当成在输入，而不是快捷键。
+		blurWidgetFocus();
 		// /particle 弹窗是模态的：吞掉所有落在它之外的点击
 		if (cmdEditorOpen) {
 			return true;
@@ -2742,6 +2765,14 @@ public class CompositeEditScreen extends Screen {
 		return getFocused() instanceof net.minecraft.client.gui.components.EditBox;
 	}
 
+	/** 让当前获得焦点的控件（输入框）失焦 —— 点了控件之外的地方时调用，
+	 *  否则焦点留在输入框里，之后按 WASD / 空格 / Delete 会被当成打字而不是快捷键。 */
+	private void blurWidgetFocus() {
+		if (getFocused() != null) {
+			setFocused(null);
+		}
+	}
+
 	@Override
 	public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
 		if (worldPreviewActive && handleMovementKey(keyCode, false)) {
@@ -3138,6 +3169,10 @@ public class CompositeEditScreen extends Screen {
 		int bottom = propRowBaseY() + propShownRows() * ROW_H + 20;
 		if (selectedClip != null) {
 			bottom = Math.max(bottom, removeY() + ROW_H);
+			// 选中粒子 / 分组时面板里也有「显示坐标系」开关，它排在其它行之后
+			if (gizmoToggleShown()) {
+				bottom = Math.max(bottom, propRowY(gizmoRowIndex()) + FIELD_H + 8);
+			}
 		}
 		propScroll = save;
 		return bottom - propContentTop();
@@ -3154,6 +3189,16 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	private void clampPropScroll() { propScroll = Math.max(0, Math.min(propMaxScroll(), propScroll)); }
+
+	/** 属性面板的「选择标识」：只有真正换了编辑对象才把滚动归零。
+	 *  刻意用 效果名 + 轨道 + 子项下标，而不是动画条实例 —— 编辑器内部（改名 / 改时长 /
+	 *  拖窗口 / 播放头刷新）会不断替换动画条实例，比较实例会把编辑过程误判成「换了对象」。 */
+	private String propSelectionKey() {
+		if (selectedClip == null) {
+			return "text";
+		}
+		return selectedClip.effect() + "#" + laneOf(selectedClip) + "#" + selectedChild;
+	}
 
 	/** 文本对象属性的范围（0..2 = 位置 xyz，3 = 缩放，4 = 透明度）。 */
 	private double propMin(int p) { return p == 3 ? 0.01 : (p == 4 ? 0 : -64); }
@@ -3329,6 +3374,9 @@ public class CompositeEditScreen extends Screen {
 		}
 		textDurField = null;
 		if (selectedClip != null) {
+			// 选中的粒子 / 分组也有自己的坐标系（见 gizmoVisible），所以这里同样要有
+			// 「显示坐标系」开关 —— 否则选中粒子时根本没法把 gizmo 打开
+			addGizmoToggle(wx, wy);
 			return; // 文本时长 / 距离缩放 描述的是文本对象，而不是动画条
 		}
 		// 文本时长 == 时间线长度（时间线自身的长度输入框已被移除）
@@ -3348,15 +3396,43 @@ public class CompositeEditScreen extends Screen {
 				init();
 			}));
 		// 显示坐标系（世界里的三轴 gizmo）：默认关闭，需要拖轴调整位置时再打开
-		addRenderableWidget(ThemeButton.of(wx, wy + propRowY(GIZMO_ROW), PROP_W - PROP_INSET - 8, FIELD_H,
+		addGizmoToggle(wx, wy);
+	}
+
+	/** 「显示坐标系」整行开关 —— 文本对象与选中的粒子 / 分组都能开关世界里的三轴 gizmo。 */
+	private void addGizmoToggle(int wx, int wy) {
+		if (!gizmoToggleShown()) {
+			return;
+		}
+		addRenderableWidget(ThemeButton.of(wx, wy + propRowY(gizmoRowIndex()), PROP_W - PROP_INSET - 8, FIELD_H,
 			Component.literal(showGizmo ? L10n.tr("anima.ui.prop.gizmo_on") : L10n.tr("anima.ui.prop.gizmo_off")), b -> {
 				showGizmo = !showGizmo;
 				init();
 			}));
 	}
 
-	/** 让属性字段实时与数值（坐标系拖动 / 播放）保持同步。 */
+	/** 「显示坐标系」按钮是否出现在当前选择下：文本对象，或选中了整个粒子 / 分组。
+	 *  （分组的子粒子没有自己的偏移，因此不显示。） */
+	private boolean gizmoToggleShown() {
+		return selectedClip == null || (isParticleSelected() && !hasGroupChild());
+	}
+
+	/** 「显示坐标系」按钮的行号：文本对象排在各开关行之后；选中粒子时紧接其「移除该条」下方。 */
+	private int gizmoRowIndex() {
+		return selectedClip == null ? GIZMO_ROW : propShownRows() + 1;
+	}
+
+	/** 让属性字段实时与数值（坐标系拖动 / 播放 / 时间线上改长度）保持同步。 */
 	private void refreshPropFields() {
+		// 时间线上拖动绿条改长度时，属性面板的「动画时长」也要跟着变
+		if (clipDurField != null && selectedClip != null && !clipDurField.isFocused()) {
+			String want = String.valueOf(Math.round(selectedClip.durationMs()));
+			if (!want.equals(clipDurField.getValue())) {
+				updatingFields = true;
+				clipDurField.setValue(want);
+				updatingFields = false;
+			}
+		}
 		if (textDurField != null && !textDurField.isFocused()) {
 			String want = String.valueOf(timelineLen);
 			if (!want.equals(textDurField.getValue())) {

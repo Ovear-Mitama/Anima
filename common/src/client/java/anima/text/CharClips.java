@@ -87,15 +87,25 @@ public final class CharClips {
 			return;
 		}
 		boolean exit = "typewriter_out".equals(effect);
-		// 单个字的动画长度，以及错峰的展开跨度：错峰必须在剪辑结束前收尾，
-		// 否则打字出场会在剪辑结束时还留着字没走完。
-		float anim = Math.max(90f, Math.min(420f, durMs / Math.max(1, len) * 3f));
-		float span = Math.max(0f, durMs - anim);
-		// 打字机类靠错峰体现"一个字一个字出现"，保留完整错峰；下落 / 飘入这类带位移的剪辑如果
-		// 错峰太大，字与字之间就会被位移拉开（例如 "8.0" 看起来像 "8 . 0"），所以压小步长。
+		// 单个字的运动时长 + 逐字出现的错峰步长
 		boolean typewriter = exit || "typewriter_in".equals(effect);
-		float stepCap = typewriter ? Float.MAX_VALUE : 12f;
-		float delayStep = len <= 1 ? 0f : Math.min(span / (len - 1), stepCap);
+		float anim;
+		float delayStep;
+		if (typewriter) {
+			// 打字机类靠错峰体现"一个字一个字出现"：保留完整错峰，错峰必须在剪辑结束前
+			// 收尾，否则打字出场会在剪辑结束时还留着字没走完
+			anim = Math.max(90f, Math.min(420f, durMs / Math.max(1, len) * 3f));
+			float span = Math.max(0f, durMs - anim);
+			delayStep = len <= 1 ? 0f : span / (len - 1);
+		} else {
+			// 位移型（下落 / 随机下落 / 飘入）：把剪辑时长拆成「逐字出现的错峰」与
+			// 「单字运动」两段，<b>两者都随动画时长等比变化</b> —— 否则改时长只改变运动
+			// 快慢，逐字出现的节奏永远是同一个固定值。错峰只占 1/4（最多 500ms），
+			// 免得字与字被位移拉开（"8.0" 看起来像 "8 . 0"）。
+			float span = Math.min(durMs * 0.25f, 500f);
+			delayStep = len <= 1 ? 0f : span / (len - 1);
+			anim = Math.max(60f, durMs - delayStep * (len - 1));
+		}
 		for (int i = 0; i < len; i++) {
 			int order = exit ? (len - 1 - i) : i; // 出场时最后一个字先走
 			float delay = order * delayStep;
