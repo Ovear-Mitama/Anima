@@ -403,7 +403,7 @@ public final class AnimaApi {
 
 	/**
 	 * 打开<b>世界内编辑器</b>：浮动窗口形态，世界继续渲染，可以直接在场景里编辑 / 预览
-	 * 世界锚定的动画对象（与 {@code F7} / Mod Menu 的入口一致）。玩家不在世界里时退化为普通面板。
+	 * 世界锚定的动画对象（与「打开动画编辑器」按键 / Mod Menu 的入口一致）。玩家不在世界里时退化为普通面板。
 	 * {@code parent} 可为 null。
 	 */
 	public static void openWorldEditor(Screen parent) {

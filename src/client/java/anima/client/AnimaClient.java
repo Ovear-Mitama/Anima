@@ -23,8 +23,9 @@ public class AnimaClient implements ClientModInitializer {
 		PlatformHooks.get().registerClientReloadListener(Anima.id("animation_definitions"),
 			new AnimationJsonLoader(manager));
 
-		// F7 (default) opens the editor without needing Mod Menu
+		// 编辑器按键（默认未指定，需在「按键控制」里自行绑定）；不开 Mod Menu 也能进编辑器
 		KeyBindingHelper.registerKeyBinding(EditorKeybinds.OPEN_EDITOR);
+		KeyBindingHelper.registerKeyBinding(EditorKeybinds.PLAY_PAUSE);
 		PlatformHooks.get().addClientTickListener(EditorKeybinds::handle);
 
 		// keep the world projection matrix up to date for WorldProjection (world→screen helpers)

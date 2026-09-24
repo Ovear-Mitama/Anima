@@ -1,5 +1,7 @@
 # Anima
 
+![icon](https://cdn.modrinth.com/data/cached_images/97178e824964a51d45a9e945765670510afb81b7.png)
+
 Anima is a client-side animation library for Minecraft 1.21.1. It adds keyframe animation to GUI textures, in-world sprites and text, and comes with an in-game editor where you can drag effects onto a timeline, preview the result live, and export it as JSON.
 
 There are two ways to use it: resource pack authors just write JSON, and mod developers can call the Java API. Fabric and NeoForge are both supported. Everything runs on the client, the server does not need the mod. Licensed under Apache-2.0.
@@ -16,6 +18,7 @@ Text:
 
 - Presets for typewriter in, per-character fall, random fall, drift in and fade out
 - Two layers: HUD text and in-world 3D text. 3D text has real perspective and is occluded by blocks, and each character can be offset, scaled, rotated and faded independently
+- Drop shadow works on both layers: HUD text uses the vanilla font shadow, 3D text draws its own, and the shadow is depth-tested so entities and blocks in front occlude it correctly
 
 Particles:
 
@@ -30,9 +33,9 @@ Particle groups and exported timelines live under `config/anima/` as plain JSON,
 
 ## In-game editor
 
-Press `F7` (rebindable) to open / close the timeline editor. Inside a world it opens as a floating window and the world keeps rendering, so you can tune things while looking at them.
+Press the "Open Animation Editor" key to open / close the timeline editor — it is **unbound by default**, bind it under Options → Controls → Miscellaneous. Inside a world it opens as a floating window and the world keeps rendering, so you can tune things while looking at them. There is also a separate "Play / Pause (editor)" key, also unbound by default (Space does the same thing while the editor is focused).
 
-The 3D preview inside the editor looks best with a real world renderer, so the library offers a dedicated sandbox world `anima-config` (superflat, spectator, fixed time, created on first use, never touches your saves). Enter it from code with `AnimaApi.enterConfigWorld(parent)`; `AnimaApi.isConfigWorld()` tells you whether you are already there (there is no button for it in the UI). The library does **not** gate the editors behind it — a mod that wants to require the world writes its own prompt and button.
+Inside a world the editor's preview is drawn by the real world renderer: 3D text and particle clips are painted in the world itself (with depth, so blocks occlude them). That only happens inside the dedicated sandbox world `anima-config` (superflat, spectator, fixed time, created on first use, never touches your saves). Enter it from code with `AnimaApi.enterConfigWorld(parent)`; `AnimaApi.isConfigWorld()` tells you whether you are already there (there is no button for it in the UI). The library does **not** gate the editors behind it — a mod that wants to require the world writes its own prompt and button.
 
 Other entry points: the config button for "Anima" in Mod Menu (opens the timeline editor), or `AnimaApi.openTimelineEditor(parent)` in code.
 
@@ -53,7 +56,7 @@ Timeline controls:
 | Drag on empty timeline space | Move the playhead (seek) |
 | Scroll wheel | Scroll through tracks |
 | Ctrl + scroll wheel | Zoom the time axis, anchored at the cursor |
-| Right-click a clip | Menu: Copy / Create group / Delete |
+| Right-click a clip | Menu: Copy / Create group / Delete (flips up/left near the screen edge so every row stays visible) |
 | Space | Play / pause (in floating window mode this is left to Jump, use the play button instead) |
 | Delete | Delete the selected entry |
 | W/A/S/D, Space, Shift (in floating window mode) | Drive the spectator camera around the preview object |
@@ -224,7 +227,7 @@ Everything lives under `config/anima/`:
 
 Upgrading from the old name `texture-animation-library` migrates existing folders automatically, nothing is lost.
 
-The editor UI ships with English and Chinese (`assets/anima/lang/en_us.json`, `zh_cn.json`). To add another language, drop a `<locale>.json` with the same keys (`anima.ui.*`, `key.anima.editor`, `anima.pack.title`) into a resource pack.
+The editor UI ships with English and Chinese (`assets/anima/lang/en_us.json`, `zh_cn.json`). To add another language, drop a `<locale>.json` with the same keys (`anima.ui.*`, `key.anima.editor`, `key.anima.play_pause`, `anima.pack.title`) into a resource pack.
 
 ## Compatibility
 
@@ -253,6 +256,8 @@ Apache-2.0
 
 # 中文文档
 
+![icon](https://cdn.modrinth.com/data/cached_images/97178e824964a51d45a9e945765670510afb81b7.png)
+
 Anima 是 Minecraft 1.21.1 的客户端动画库，给 GUI 贴图、世界内精灵和文字加上关键帧动画。它同时带一个游戏内编辑器，可以在里面拖着排特效、实时看效果，再导出成 JSON。
 
 动画有两种用法：资源包作者写 JSON 就能用，模组开发者可以调 Java API。加载器支持 Fabric 和 NeoForge，功能全在客户端，服务端不用装。许可 Apache-2.0。
@@ -269,6 +274,7 @@ Anima 是 Minecraft 1.21.1 的客户端动画库，给 GUI 贴图、世界内精
 
 - 预设了打字机出场、逐字下落、随机下落、飘入、淡出等编排效果
 - 分 HUD 文字和世界内 3D 文字两层。3D 文字有真实透视、会被方块遮挡，每个字可以单独控制位移、缩放、旋转、透明度
+- 两层文字都带投影：HUD 文字用原版字体的阴影，3D 文字自己绘制一遍；阴影同样参与深度测试，挡在前面的实体和方块会正确遮住它
 
 粒子：
 
@@ -283,11 +289,11 @@ Anima 是 Minecraft 1.21.1 的客户端动画库，给 GUI 贴图、世界内精
 
 ## 游戏内编辑器
 
-按 `F7` 打开 / 关闭时间线编辑器（可以改键）。在世界里它以浮窗形式打开，世界继续渲染，可以边看边调。
+用「打开动画编辑器」按键打开 / 关闭时间线编辑器——它**默认未指定**，请在「选项 → 按键控制 → 杂项」里绑定。在世界里它以浮窗形式打开，世界继续渲染，可以边看边调。另有独立的「播放 / 暂停（编辑器）」按键，同样默认未指定（编辑器获得焦点时空格效果相同）。
 
-编辑器里的 3D 预览用真实世界渲染器效果最好，所以本库提供了一个专用沙盒世界 `anima-config`（超平坦、旁观、时间固定、首次使用自动创建，不影响你的存档）：代码里用 `AnimaApi.enterConfigWorld(parent)` 进入，`AnimaApi.isConfigWorld()` 判断当前是否已经在里面（界面上没有进世界的按钮）。本库**不再**给编辑器加门槛——需要强制玩家进世界的模组自己写提示和按钮。
+在世界的浮窗编辑器里，预览由真实世界渲染器绘制：3D 文字和粒子动画条直接画在世界中（有深度，会被方块遮挡）。这套只在专用沙盒世界 `anima-config` 里生效（超平坦、旁观、时间固定、首次使用自动创建，不影响你的存档）：代码里用 `AnimaApi.enterConfigWorld(parent)` 进入，`AnimaApi.isConfigWorld()` 判断当前是否已经在里面（界面上没有进世界的按钮）。本库**不再**给编辑器加门槛——需要强制玩家进世界的模组自己写提示和按钮。
 
-另外还有两个入口：Mod Menu 里点「Anima｜赋灵」的配置按钮（打开编排编辑器），或代码里调用 `AnimaApi.openTimelineEditor(parent)`。
+另外还有两个入口：Mod Menu 里点「Anima」的配置按钮（打开编排编辑器），或代码里调用 `AnimaApi.openTimelineEditor(parent)`。
 
 ### 时间线编辑器
 
@@ -306,7 +312,7 @@ Anima 是 Minecraft 1.21.1 的客户端动画库，给 GUI 贴图、世界内精
 | 拖时间线空白处 | 拖动播放头（跳时间） |
 | 滚轮 | 上下翻看轨道 |
 | Ctrl + 滚轮 | 缩放时间轴，以光标处为锚点 |
-| 右键动画条 | 菜单：复制 / 创建组 / 删除 |
+| 右键动画条 | 菜单：复制 / 创建组 / 删除（贴近屏幕下/右边缘时菜单会自动向上/左翻转，保证每一项都可见） |
 | 空格 | 播放 / 暂停（世界浮窗模式下留给「跳跃」，此时用底部播放按钮） |
 | Delete | 删除选中条目 |
 | W/A/S/D、空格、Shift（世界浮窗模式下） | 驱动旁观相机围着预览对象看 |
@@ -477,7 +483,7 @@ manager.registerWorldSprite(spriteId,
 
 从旧名字 `texture-animation-library` 升级时会自动迁移已有目录，配置不会丢。
 
-编辑器界面自带中英双语（`assets/anima/lang/zh_cn.json`、`en_us.json`）。想加别的语言，在资源包里放一份同 key（`anima.ui.*`、`key.anima.editor`、`anima.pack.title`）的 `<locale>.json` 就能覆盖。
+编辑器界面自带中英双语（`assets/anima/lang/zh_cn.json`、`en_us.json`）。想加别的语言，在资源包里放一份同 key（`anima.ui.*`、`key.anima.editor`、`key.anima.play_pause`、`anima.pack.title`）的 `<locale>.json` 就能覆盖。
 
 ## 兼容性
 

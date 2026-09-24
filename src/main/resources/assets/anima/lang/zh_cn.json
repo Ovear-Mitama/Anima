@@ -1,7 +1,5 @@
 {
-	"anima.pack.title": "Anima｜赋灵",
-	"modmenu.nameTranslation.anima": "Anima｜赋灵",
-	"modmenu.summaryTranslation.anima": "贴图与文字的关键帧动画库",
+	"anima.pack.title": "Anima",
 	"modmenu.descriptionTranslation.anima": "一个让文字和纹理在世界中栩栩如生的库！",
 	"anima.ui.button.back": "← 返回",
 	"anima.ui.button.cancel": "取消",
@@ -65,8 +63,6 @@
 	"anima.ui.error.save_failed": "保存失败: ",
 	"anima.ui.error.timeline_write_failed": "config/anima/timelines/ (写入失败: ",
 	"anima.ui.error.unknown_particle": "未知粒子: ",
-	"anima.ui.gate.hint_f7": "进入后按 F7 即可打开/关闭编辑器浮窗。",
-	"anima.ui.gate.message": "编辑器需要真实世界渲染，请先进入专用配置世界（超平坦草地 · 白天 · 旁观）。",
 	"anima.ui.guide.keys": "左键空白=添加关键帧 · 拖拽=移动 · 右键/Delete=删除 · 点关键帧后可改值/曲线",
 	"anima.ui.guide.timeline": "拖块=移动/上下换行 · 拖边=时长 · 空白拖=跳时间 · 滚轮=翻看轨道 · 右键=菜单(复制/创建组/删除) · 空格=播放",
 	"anima.ui.hint.alpha_range": "透明度 0..1",
@@ -109,8 +105,8 @@
 	"anima.ui.play_mode.loop": "循环",
 	"anima.ui.play_mode.once": "单次",
 	"anima.ui.play_mode.pingpong": "往返",
-	"anima.ui.preview.sample_text": "Anima｜赋灵",
-	"anima.ui.preview.text": "Anima｜赋灵",
+	"anima.ui.preview.sample_text": "Anima",
+	"anima.ui.preview.text": "Anima",
 	"anima.ui.prop.alpha": "透明度",
 	"anima.ui.prop.child_duration": "时长",
 	"anima.ui.prop.child_particle_n": "子粒子 ",
@@ -168,5 +164,6 @@
 	"anima.ui.type.text": "文本",
 	"anima.ui.type.world_sprite": "世界内精灵",
 	"anima.ui.type.world_sprite_hint": "世界内精灵动画 (F3+T 重载后生效)",
-	"key.anima.editor": "打开动画编辑器"
+	"key.anima.editor": "打开动画编辑器",
+	"key.anima.play_pause": "播放 / 暂停（编辑器）"
 }

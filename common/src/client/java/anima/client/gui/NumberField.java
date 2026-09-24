@@ -7,8 +7,10 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 
 /**
- * A numeric text field that also supports holding Left/Right arrow keys to continuously
- * step the value (key-repeat driven), or direct typing. Useful for precise property editing.
+ * 数值输入框：可以直接打字，也可以按住左键横向拖动来连续改值（拖 2 像素走一个 {@code step}）。
+ * 拖动到系统屏幕边缘时光标会环绕到对面边缘，因此可以一直朝同一方向拖。
+ * <p>
+ * 左右方向键<b>不再</b>用于加减数值——那是文本里移动光标的按键，抢过来就没法改光标位置了。
  */
 public class NumberField extends EditBox {
 	private final int min;
@@ -76,6 +78,8 @@ public class NumberField extends EditBox {
 		if (draggingVal && button == 0) {
 			int delta = (int) Math.round((mouseX - dragStartX) / 2.0) * step;
 			apply(clamp(dragStartVal + delta));
+			// 拖到系统屏幕边缘就环绕光标，并同步拖拽起点，这样可以一直朝同一方向拖
+			dragStartX += DragCursor.wrapAtScreenEdge();
 			return true;
 		}
 		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -85,21 +89,6 @@ public class NumberField extends EditBox {
 	public boolean mouseReleased(double mouseX, double mouseY, int button) {
 		draggingVal = false;
 		return super.mouseReleased(mouseX, mouseY, button);
-	}
-
-	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-		if (isFocused()) {
-			if (keyCode == 263) { // GLFW left arrow → decrease
-				apply(clamp(current() - step));
-				return true;
-			}
-			if (keyCode == 262) { // GLFW right arrow → increase
-				apply(clamp(current() + step));
-				return true;
-			}
-		}
-		return super.keyPressed(keyCode, scanCode, modifiers);
 	}
 
 	/** Custom draw: VS-style underlined input (|____|, no box). Focus draws a thicker accent line. */

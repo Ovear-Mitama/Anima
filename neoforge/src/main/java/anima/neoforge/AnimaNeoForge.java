@@ -35,12 +35,16 @@ public class AnimaNeoForge {
 		});
 
 		if (FMLEnvironment.dist == Dist.CLIENT) {
-			// F7 (default) opens the editor without needing Mod Menu
-			modBus.addListener((RegisterKeyMappingsEvent event) -> event.register(EditorKeybinds.OPEN_EDITOR));
+			// 编辑器按键（默认未指定，需在「按键控制」里自行绑定）；不开 Mod Menu 也能进编辑器
+			modBus.addListener((RegisterKeyMappingsEvent event) -> {
+				event.register(EditorKeybinds.OPEN_EDITOR);
+				event.register(EditorKeybinds.PLAY_PAUSE);
+			});
 			PlatformHooks.get().addClientTickListener(EditorKeybinds::handle);
 			// world-space drawing (e.g. the preview object placed inside the config world);
-			// RenderLevelStageEvent lives on the MOD bus, not the game event bus
-			modBus.addListener((RenderLevelStageEvent event) -> hooks.onRenderLevelStage(event));
+			// RenderLevelStageEvent 只实现 Event(不是 IModBusEvent),按 NeoForge 文档它挂在
+			// 主事件总线 NeoForge.EVENT_BUS 上,注册到 mod bus 会在构造时直接抛异常
+			NeoForge.EVENT_BUS.addListener((RenderLevelStageEvent event) -> hooks.onRenderLevelStage(event));
 			// keep the world projection matrix up to date for WorldProjection (world→screen helpers)
 			PlatformHooks.get().addWorldRenderListener((pose, buffers, camera, partialTick) ->
 				anima.client.world.WorldProjection.captureProjection(

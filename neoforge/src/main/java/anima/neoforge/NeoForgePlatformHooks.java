@@ -6,6 +6,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
@@ -20,6 +21,8 @@ import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.settings.IKeyConflictContext;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 
 import anima.manager.AnimatedTextureManager;
@@ -56,6 +59,28 @@ public class NeoForgePlatformHooks extends PlatformHooks {
 	@Override
 	public void registerClientReloadListener(ResourceLocation id, PreparableReloadListener listener) {
 		reloadListeners.add(listener);
+	}
+
+	/** 这些移动键的上下文被 NeoForge 设成 IN_GAME，编辑器打开期间需要临时放宽。 */
+	private final java.util.Map<KeyMapping, IKeyConflictContext> savedKeyContexts = new java.util.HashMap<>();
+
+	@Override
+	public void allowMovementKeysInGui(boolean allow) {
+		Minecraft mc = Minecraft.getInstance();
+		KeyMapping[] keys = {
+			mc.options.keyUp, mc.options.keyDown, mc.options.keyLeft, mc.options.keyRight,
+			mc.options.keyJump, mc.options.keyShift, mc.options.keySprint
+		};
+		if (allow) {
+			savedKeyContexts.clear();
+			for (KeyMapping km : keys) {
+				savedKeyContexts.put(km, km.getKeyConflictContext());
+				km.setKeyConflictContext(KeyConflictContext.UNIVERSAL);
+			}
+		} else if (!savedKeyContexts.isEmpty()) {
+			savedKeyContexts.forEach(KeyMapping::setKeyConflictContext);
+			savedKeyContexts.clear();
+		}
 	}
 
 	public void onClientTick(ClientTickEvent.Post event) {

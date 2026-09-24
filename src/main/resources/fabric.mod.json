@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "anima",
 	"version": "${version}",
-	"name": "Anima｜赋灵",
+	"name": "Anima",
 	"description": "A library that brings your text and textures to life in the world!",
 	"authors": [
 		"mitama"

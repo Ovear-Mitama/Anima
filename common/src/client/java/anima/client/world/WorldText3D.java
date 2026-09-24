@@ -39,6 +39,12 @@ public final class WorldText3D {
 	/** 一个小小的高度偏移，让文字以锚点为中心（字形框高 9px）。 */
 	private static final float GLYPH_HALF = 4.5f;
 
+	/** 阴影偏移：与游戏内文字一致，右下各 1 GUI 像素（与正文共面，无 Z 偏移）。 */
+	private static final float SHADOW_OFFSET = 1f;
+
+	/** 阴影亮度：与游戏内文字一致，RGB ×0.25（alpha 不变）。 */
+	private static final float SHADOW_DIM = 0.25f;
+
 	/** 单个字形的变换（GUI 像素位移 / 额外缩放 / 绕字形中心旋转 / 透明度）。 */
 	public static final class Glyph {
 		public float dx;
@@ -107,10 +113,12 @@ public final class WorldText3D {
 					m.rotateZ(g.rot);
 				}
 				int col = (Math.round(baseA * a) << 24) | rgb;
-				// dropShadow = true：交给原版 drawInBatch 画阴影（颜色 ×0.25、字形偏移 1px 的那一遍），
-				// 3D 文字因此和 HUD 文字一样有阴影。之前这里传的是 false，跳字 / 编辑器预览都没有阴影。
+				// 交给原版单次 drawInBatch 的 dropShadow：原版会在同一缓冲内先画阴影、再画正文，
+				// 顺序有保证（阴影永远在正文之下），并配合 POLYGON_OFFSET（glPolygonOffset(-1,-10)
+				// 把整个字形深度偏向相机）提升远距离深度精度。
+				// 阴影参与深度测试 → 会被挡在文字前的实体/方块正确遮挡，不再"穿墙/穿实体"。
 				font.drawInBatch(ch, -w / 2f, -GLYPH_HALF, col, true, m, buffers,
-					Font.DisplayMode.NORMAL, 0, LightTexture.FULL_BRIGHT);
+					Font.DisplayMode.POLYGON_OFFSET, 0, LightTexture.FULL_BRIGHT);
 				drawn = true;
 			}
 			cx += w;
@@ -190,9 +198,20 @@ public final class WorldText3D {
 					m.rotateZ(g.rot);
 				}
 				int col = (Math.round(baseA * a) << 24) | rgb;
-				// 同上：阴影交给原版 drawInBatch，逐字动画（位移 / 缩放 / 旋转）下阴影跟着字一起动。
-				font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, true, m, buffers,
-					mode, 0, LightTexture.FULL_BRIGHT);
+				if (mode == Font.DisplayMode.SEE_THROUGH) {
+					// 穿透通道：阴影单独画、且参与深度测试（POLYGON_OFFSET）→ 被挡在文字前的实体正确遮挡；
+					// 正文保持 see-through 无深度测试 → 永远可见。阴影与正文不同缓冲、正文后刷 → 压在阴影上。
+					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, shadowColor(col), false,
+						new Matrix4f(m).translate(SHADOW_OFFSET, SHADOW_OFFSET, 0f), buffers,
+						Font.DisplayMode.POLYGON_OFFSET, 0, LightTexture.FULL_BRIGHT);
+					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
+						mode, 0, LightTexture.FULL_BRIGHT);
+				} else {
+					// 常规通道只补画正文（不带阴影）：它是与穿透通道配套的"遮挡"补画，
+					// 若再画阴影，阴影会落在穿透正文之后/与正文共面，重现 z-fighting 或压暗。
+					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
+						mode, 0, LightTexture.FULL_BRIGHT);
+				}
 				drawn = true;
 			}
 			cx += w;
@@ -202,5 +221,13 @@ public final class WorldText3D {
 
 	private static float clamp(float v) {
 		return Math.max(0f, Math.min(1f, v));
+	}
+
+	/** 阴影色：与原版 dropShadow 一致，RGB ×0.25，alpha 不变。 */
+	private static int shadowColor(int argb) {
+		return (argb & 0xFF000000)
+			| (Math.round(((argb >> 16) & 0xFF) * SHADOW_DIM) << 16)
+			| (Math.round(((argb >> 8) & 0xFF) * SHADOW_DIM) << 8)
+			| Math.round((argb & 0xFF) * SHADOW_DIM);
 	}
 }

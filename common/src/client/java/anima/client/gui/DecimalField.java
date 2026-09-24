@@ -7,9 +7,11 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 
 /**
- * Like {@link NumberField} but for fractional values (3 decimals): position / scale / opacity.
- * Left-drag changes the value in small steps (0.01 per 2px) instead of whole units, typing keeps
- * any precision up to 3 decimals, and Left/Right arrows step by {@code step}.
+ * 类似 {@link NumberField}，但用于小数（3 位小数）：位置 / 缩放 / 透明度。
+ * 横向左键拖动改值（每 2 像素 0.01），拖动到系统屏幕边缘时光标会环绕到对面边缘，可以一直拖；
+ * 直接输入可保留最多 3 位小数。
+ * <p>
+ * 左右方向键<b>不再</b>用于加减数值——那是文本里移动光标的按键，抢过来就没法改光标位置了。
  */
 public class DecimalField extends EditBox {
 	private static final int DECIMALS = 3;
@@ -88,9 +90,11 @@ public class DecimalField extends EditBox {
 	@Override
 	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
 		if (draggingVal && button == 0) {
-			// 0.01 per 2px — fine enough for world positions and scale
+			// 每 2 像素 0.01 —— 对世界坐标和缩放来说足够精细
 			double delta = Math.round((mouseX - dragStartX) / 2.0) * step;
 			apply(dragStartVal + delta);
+			// 拖到系统屏幕边缘就环绕光标，并同步拖拽起点，这样可以一直朝同一方向拖
+			dragStartX += DragCursor.wrapAtScreenEdge();
 			return true;
 		}
 		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -100,21 +104,6 @@ public class DecimalField extends EditBox {
 	public boolean mouseReleased(double mouseX, double mouseY, int button) {
 		draggingVal = false;
 		return super.mouseReleased(mouseX, mouseY, button);
-	}
-
-	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-		if (isFocused()) {
-			if (keyCode == 263) { // GLFW left arrow → decrease
-				apply(current() - step);
-				return true;
-			}
-			if (keyCode == 262) { // GLFW right arrow → increase
-				apply(current() + step);
-				return true;
-			}
-		}
-		return super.keyPressed(keyCode, scanCode, modifiers);
 	}
 
 	/** Same VS-style underlined input as NumberField (|____|, no box). */

@@ -1,7 +1,5 @@
 {
 	"anima.pack.title": "Anima",
-	"modmenu.nameTranslation.anima": "Anima",
-	"modmenu.summaryTranslation.anima": "Keyframe animation for textures and text",
 	"modmenu.descriptionTranslation.anima": "A library that brings your text and textures to life in the world!",
 	"anima.ui.button.back": "← Back",
 	"anima.ui.button.cancel": "Cancel",
@@ -65,8 +63,6 @@
 	"anima.ui.error.save_failed": "Save failed: ",
 	"anima.ui.error.timeline_write_failed": "config/anima/timelines/ (write failed: ",
 	"anima.ui.error.unknown_particle": "Unknown particle: ",
-	"anima.ui.gate.hint_f7": "Once inside, press F7 to open/close the editor overlay.",
-	"anima.ui.gate.message": "The editor needs real world rendering. Enter the dedicated config world first (superflat grass · day · spectator).",
 	"anima.ui.guide.keys": "Left-click empty = add keyframe · Drag = move · Right-click / Delete = remove · Click a keyframe to edit its value/curve",
 	"anima.ui.guide.timeline": "Drag block = move / change lane · Drag edge = length · Drag empty = scrub · Wheel = pan lanes · Right-click = menu (duplicate / group / delete) · Space = play",
 	"anima.ui.hint.alpha_range": "Alpha 0..1",
@@ -168,5 +164,6 @@
 	"anima.ui.type.text": "Text",
 	"anima.ui.type.world_sprite": "World sprite",
 	"anima.ui.type.world_sprite_hint": "World sprite animation (takes effect after an F3+T reload)",
-	"key.anima.editor": "Open Animation Editor"
+	"key.anima.editor": "Open Animation Editor",
+	"key.anima.play_pause": "Play / Pause (editor)"
 }
