@@ -165,7 +165,19 @@ Tags are carried through the `font` field of `Style` (`anima:textanim/<tag>`), s
 // Vanilla /particle semantics: count is the total, delta is the spread, speed is the velocity multiplier
 AnimaApi.emitParticles("minecraft:flame", x, y, z, 20, 0.2, 0.2, 0.2, 0.05);
 AnimaApi.isParticleSupported("minecraft:flame"); // returns false for parameterized particles (dust/block etc.)
+
+// Play "particle clips" exported by the editor (particle_3d / particle_group) elsewhere:
+// parse once for a reusable template, give every animated instance (each damage number, each
+// preview object) its own player, then call emit with that instance's own millisecond clock —
+// this is what makes editor particles fire in real use, not only in the preview
+ClipParticles clips = AnimaApi.particleClips(exportedClipsJson);
+ClipParticles.Player particles = clips.newPlayer();
+particles.emit(objectX, objectY, objectZ, localMs); // call every frame; a rewinding clock replays
 ```
+
+The count is the **total over the whole clip**, emitted gradually as the clip progresses; particles
+appear at the object position plus the clip's own `ox/oy/oz` offset and are then simulated by the
+vanilla particle engine (they do not follow the text).
 
 ### Sprite font text
 
@@ -421,7 +433,16 @@ AnimaApi.drawWorldTextHudOffset(g, font, Component.literal("42"),
 // 沿用原版 /particle 语义：count 总数，delta = 散布范围，speed = 初速度倍率
 AnimaApi.emitParticles("minecraft:flame", x, y, z, 20, 0.2, 0.2, 0.2, 0.05);
 AnimaApi.isParticleSupported("minecraft:flame"); // 参数化粒子（dust/block 等）返回 false
+
+// 编辑器导出的「粒子剪辑」（particle_3d / particle_group）在别处播放出来：
+// 解析一次拿到模板，每个动画实例（一次跳字、一个预览对象）各自 newPlayer()，
+// 再用实例自己的毫秒时钟调用 emit —— 这样编辑器里拖进去的粒子在实际使用时也会发射
+ClipParticles clips = AnimaApi.particleClips(exportedClipsJson);
+ClipParticles.Player particles = clips.newPlayer();
+particles.emit(objectX, objectY, objectZ, localMs); // 每帧调用；时钟回退会自动重放
 ```
+
+数量是**整条剪辑的总量**、在剪辑窗口内按进度陆续发出；粒子出现在对象位置 + 剪辑自身的偏移 `ox/oy/oz` 上，之后由原版粒子引擎自己模拟（不跟随文本移动）。
 
 ### 贴图拼字
 
