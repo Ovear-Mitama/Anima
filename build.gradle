@@ -10,6 +10,12 @@ base {
 	archivesName = project.archives_base_name
 }
 
+// 产物命名:anima-<版本号>-<加载器>-<MC版本号>.jar(与 Damage Engine 一致)
+// 本分支使用 remap loom:jar 是开发用产物(devlibs),对外发布的是 remapJar 的产物。
+tasks.named('remapJar') {
+	archiveFileName = "${project.archives_base_name}-${project.mod_version}-Fabric-${project.minecraft_version}.jar"
+}
+
 repositories {
 	// Mod Menu maven (compile only, optional at runtime)
 	maven { url "https://maven.terraformersmc.com/releases/" }
