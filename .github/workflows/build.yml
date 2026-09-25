@@ -22,7 +22,9 @@ jobs:
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
       - name: build
-        run: ./gradlew build
+        # gradle.properties 里的 org.gradle.java.home 是本机 Windows 路径，CI 上无效；
+        # 命令行 -D 优先级高于 gradle.properties，这里用 runner 上已安装的 JDK 位置覆盖它。
+        run: ./gradlew build -Dorg.gradle.java.home="$JAVA_HOME"
       - name: capture build artifacts
         uses: actions/upload-artifact@v7
         with:
