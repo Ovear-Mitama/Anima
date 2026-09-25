@@ -1,6 +1,6 @@
 {
 	"anima.pack.title": "Anima",
-	"modmenu.descriptionTranslation.anima": "A library that brings your text and textures to life in the world!",
+	"modmenu.descriptionTranslation.anima": "A client-side animation library for text and textures, including real 3D world text and particles.",
 	"anima.ui.button.back": "← Back",
 	"anima.ui.button.cancel": "Cancel",
 	"anima.ui.button.clear": "Clear",

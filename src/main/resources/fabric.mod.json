@@ -3,7 +3,7 @@
 	"id": "anima",
 	"version": "${version}",
 	"name": "Anima",
-	"description": "A library that brings your text and textures to life in the world!",
+	"description": "A client-side animation library for text and textures, including real 3D world text and particles.",
 	"authors": [
 		"mitama"
 	],

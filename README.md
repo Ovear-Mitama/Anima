@@ -2,7 +2,7 @@
 
 ![icon](https://cdn.modrinth.com/data/cached_images/97178e824964a51d45a9e945765670510afb81b7.png)
 
-Anima is a client-side animation library for Minecraft 1.21.1. It adds keyframe animation to GUI textures, in-world sprites and text, and comes with an in-game editor where you can drag effects onto a timeline, preview the result live, and export it as JSON.
+Anima is a client-side animation library for Minecraft 26.1 (1.21.1 lives on the `1.21` branch). It adds keyframe animation to GUI textures, in-world sprites and text, and comes with an in-game editor where you can drag effects onto a timeline, preview the result live, and export it as JSON.
 
 There are two ways to use it: resource pack authors just write JSON, and mod developers can call the Java API. Fabric and NeoForge are both supported. Everything runs on the client, the server does not need the mod. Licensed under Apache-2.0.
 
@@ -270,7 +270,7 @@ Apache-2.0
 
 ![icon](https://cdn.modrinth.com/data/cached_images/97178e824964a51d45a9e945765670510afb81b7.png)
 
-Anima 是 Minecraft 1.21.1 的客户端动画库，给 GUI 贴图、世界内精灵和文字加上关键帧动画。它同时带一个游戏内编辑器，可以在里面拖着排特效、实时看效果，再导出成 JSON。
+Anima 是 Minecraft 26.1 的客户端动画库（1.21.1 见 `1.21` 分支），给 GUI 贴图、世界内精灵和文字加上关键帧动画。它同时带一个游戏内编辑器，可以在里面拖着排特效、实时看效果，再导出成 JSON。
 
 动画有两种用法：资源包作者写 JSON 就能用，模组开发者可以调 Java API。加载器支持 Fabric 和 NeoForge，功能全在客户端，服务端不用装。许可 Apache-2.0。
 

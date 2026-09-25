@@ -1,6 +1,6 @@
 {
 	"anima.pack.title": "Anima",
-	"modmenu.descriptionTranslation.anima": "一个让文字和纹理在世界中栩栩如生的库！",
+	"modmenu.descriptionTranslation.anima": "为文字与贴图做关键帧动画的客户端库，支持真 3D 世界文字与粒子。",
 	"anima.ui.button.back": "← 返回",
 	"anima.ui.button.cancel": "取消",
 	"anima.ui.button.clear": "清空",

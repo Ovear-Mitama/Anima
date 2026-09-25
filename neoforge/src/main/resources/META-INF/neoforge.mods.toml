@@ -12,7 +12,7 @@ displayURL="https://modrinth.com/mod/anima"
 logoFile="anima.png"
 
 description='''
-A library that brings your text and textures to life in the world!
+A client-side animation library for text and textures, including real 3D world text and particles.
 '''
 
 [[mixins]]
