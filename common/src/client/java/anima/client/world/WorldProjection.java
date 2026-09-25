@@ -26,6 +26,19 @@ public final class WorldProjection {
 	private WorldProjection() {
 	}
 
+	/**
+	 * 26.1 起 {@code RenderSystem} 不再暴露投影矩阵，改由相机的
+	 * {@code viewRotation × projection} 乘上视图旋转的逆反推出纯投影矩阵。
+	 */
+	public static Matrix4f projectionFrom(Camera camera) {
+		if (camera == null) {
+			return null;
+		}
+		Matrix4f viewRotProj = camera.getViewRotationProjectionMatrix(new Matrix4f());
+		Matrix4f invViewRot = camera.getViewRotationMatrix(new Matrix4f()).invert();
+		return viewRotProj.mul(invViewRot);
+	}
+
 	/** Snapshots the real world projection matrix (call from the world render pass). */
 	public static void captureProjection(Matrix4f projection) {
 		if (projection != null) {
@@ -65,7 +78,7 @@ public final class WorldProjection {
 			float aspect = (float) mc.getWindow().getWidth() / Math.max(1, mc.getWindow().getHeight());
 			projection = new Matrix4f().perspective((float) Math.toRadians(mc.options.fov().get()), aspect, 0.05f, 1000f);
 		}
-		Vec3 cam = camera.getPosition();
+		Vec3 cam = camera.position();
 		Matrix4f view = new Matrix4f()
 			.translate((float) cam.x, (float) cam.y, (float) cam.z)
 			.rotate(camera.rotation())

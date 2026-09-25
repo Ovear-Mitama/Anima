@@ -2,8 +2,9 @@ package anima.client.gui;
 
 import java.util.function.IntConsumer;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -31,9 +32,18 @@ public class NumberField extends EditBox {
 		this.step = Math.max(1, step);
 		this.onChanged = onChanged;
 		setMaxLength(10);
-		setFilter(s -> s.chars().allMatch(Character::isDigit) || s.equals("-") || s.isEmpty());
 		setValue(String.valueOf(initial));
 		setResponder(this::onText);
+	}
+
+	/** 26.1 起 {@code EditBox} 不再提供输入过滤器，改为在插入前自行校验（与原过滤器语义一致）。 */
+	@Override
+	public void insertText(String text) {
+		String candidate = getValue().substring(0, getCursorPosition()) + text
+			+ getValue().substring(getCursorPosition());
+		if (candidate.isEmpty() || candidate.equals("-") || candidate.chars().allMatch(Character::isDigit)) {
+			super.insertText(text);
+		}
 	}
 
 	private void onText(String s) {
@@ -63,37 +73,37 @@ public class NumberField extends EditBox {
 	}
 
 	@Override
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
-		boolean r = super.mouseClicked(mouseX, mouseY, button);
-		if (button == 0 && isMouseOver(mouseX, mouseY)) {
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl) {
+		boolean r = super.mouseClicked(event, bl);
+		if (event.button() == 0 && isMouseOver(event.x(), event.y())) {
 			draggingVal = true;
 			dragStartVal = current();
-			dragStartX = mouseX;
+			dragStartX = event.x();
 		}
 		return r;
 	}
 
 	@Override
-	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-		if (draggingVal && button == 0) {
-			int delta = (int) Math.round((mouseX - dragStartX) / 2.0) * step;
+	public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+		if (draggingVal && event.button() == 0) {
+			int delta = (int) Math.round((event.x() - dragStartX) / 2.0) * step;
 			apply(clamp(dragStartVal + delta));
 			// 拖到系统屏幕边缘就环绕光标，并同步拖拽起点，这样可以一直朝同一方向拖
 			dragStartX += DragCursor.wrapAtScreenEdge();
 			return true;
 		}
-		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+		return super.mouseDragged(event, dragX, dragY);
 	}
 
 	@Override
-	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	public boolean mouseReleased(MouseButtonEvent event) {
 		draggingVal = false;
-		return super.mouseReleased(mouseX, mouseY, button);
+		return super.mouseReleased(event);
 	}
 
 	/** Custom draw: VS-style underlined input (|____|, no box). Focus draws a thicker accent line. */
 	@Override
-	public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		boolean foc = isFocused();
 		boolean over = isHoveredOrFocused();
 		int x = getX();
@@ -108,15 +118,15 @@ public class NumberField extends EditBox {
 		net.minecraft.client.gui.Font font = net.minecraft.client.Minecraft.getInstance().font;
 		String v = getValue();
 		// text is drawn one size bigger, slightly raised so it sits inside the short field
-		g.pose().pushPose();
-		g.pose().translate(x + 1, y + (h - 8) / 2 - 1, 0f);
-		g.pose().scale(1.12f, 1.12f, 1f);
+		g.pose().pushMatrix();
+		g.pose().translate(x + 1, y + (h - 8) / 2 - 1);
+		g.pose().scale(1.12f, 1.12f);
 		if (v.isEmpty()) {
-			g.drawString(font, "0", 0, 0, GuiTheme.SUBTEXT);
+			g.text(font, "0", 0, 0, GuiTheme.SUBTEXT);
 		} else {
-			g.drawString(font, v, 0, 0, GuiTheme.TEXT);
+			g.text(font, v, 0, 0, GuiTheme.TEXT);
 		}
-		g.pose().popPose();
+		g.pose().popMatrix();
 		// blinking caret (only every other 500ms) when focused — aligned with the digits, which
 		// are drawn one size bigger and raised, so the caret sits slightly above the baseline
 		if (foc && (System.currentTimeMillis() / 500L) % 2L == 0L) {

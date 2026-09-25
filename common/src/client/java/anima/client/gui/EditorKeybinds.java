@@ -6,6 +6,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 
 /**
  * 客户端按键绑定入口：不开 Mod Menu 也能进编辑器（NeoForge 同样走这里）。
@@ -14,8 +15,10 @@ import net.minecraft.client.Minecraft;
  * 两个按键<b>默认都未指定</b>，请在「选项 → 按键控制 → Anima」里自行绑定。
  */
 public final class EditorKeybinds {
-	/** 按键绑定界面里本库自己的分类 —— 塞进原版「杂项」时很难被找到。 */
-	public static final String CATEGORY = "key.categories.anima";
+	/** 按键绑定界面里本库自己的分类 —— 塞进原版「杂项」时很难被找到。
+	 *  26.1 起分类是 {@link KeyMapping.Category}，翻译键为 {@code key.category.anima.general}。 */
+	public static final KeyMapping.Category CATEGORY =
+		KeyMapping.Category.register(Identifier.fromNamespaceAndPath("anima", "general"));
 
 	/** 打开 / 关闭动画编辑器（时间线界面）。默认未指定。 */
 	public static final KeyMapping OPEN_EDITOR = new KeyMapping(

@@ -1,15 +1,20 @@
 package anima.manager;
 
+import java.io.BufferedReader;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
+import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 
 import anima.Anima;
@@ -25,25 +30,47 @@ import anima.Anima;
  * Definitions are re-applied on every resource reload (F3+T). A malformed file only logs a
  * warning and is skipped.
  */
-public class AnimationJsonLoader extends SimpleJsonResourceReloadListener {
+public class AnimationJsonLoader extends SimplePreparableReloadListener<Map<Identifier, JsonElement>> {
 	public static final String DIRECTORY = "texture_animations";
 
+	private static final FileToIdConverter CONVERTER = FileToIdConverter.json(DIRECTORY);
+
 	private final AnimatedTextureManager manager;
-	private final Set<ResourceLocation> jsonWorldSprites = new HashSet<>();
+	private final Gson gson = new GsonBuilder().create();
+	private final Set<Identifier> jsonWorldSprites = new HashSet<>();
 
 	public AnimationJsonLoader(AnimatedTextureManager manager) {
-		super(new GsonBuilder().create(), DIRECTORY);
 		this.manager = manager;
 	}
 
+	/**
+	 * 26.1 起 {@code SimpleJsonResourceReloadListener} 改为基于 Codec，这里直接按目录扫描 + Gson 解析，
+	 * 键的形态（{@code namespace:文件名}，去掉目录与扩展名）与原行为一致。
+	 */
 	@Override
-	protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager resourceManager, ProfilerFiller profiler) {
+	protected Map<Identifier, JsonElement> prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
+		Map<Identifier, JsonElement> result = new LinkedHashMap<>();
+		for (Map.Entry<Identifier, Resource> entry : CONVERTER.listMatchingResources(resourceManager).entrySet()) {
+			try (BufferedReader reader = entry.getValue().openAsReader()) {
+				JsonElement json = gson.fromJson(reader, JsonElement.class);
+				if (json != null && json.isJsonObject()) {
+					result.put(entry.getKey(), json);
+				}
+			} catch (Exception e) {
+				Anima.LOGGER.warn("Failed to read animation definition {}: {}", entry.getKey(), e.toString());
+			}
+		}
+		return result;
+	}
+
+	@Override
+	protected void apply(Map<Identifier, JsonElement> objects, ResourceManager resourceManager, ProfilerFiller profiler) {
 		manager.clearDefinitions();
 		manager.removeWorldSprites(jsonWorldSprites);
 		jsonWorldSprites.clear();
 
-		for (Map.Entry<ResourceLocation, JsonElement> entry : objects.entrySet()) {
-			ResourceLocation id = entry.getKey();
+		for (Map.Entry<Identifier, JsonElement> entry : objects.entrySet()) {
+			Identifier id = entry.getKey();
 			try {
 				AnimationDefinition definition = AnimationDefinition.fromJson(id, entry.getValue().getAsJsonObject());
 				manager.registerResourceDefinition(definition);

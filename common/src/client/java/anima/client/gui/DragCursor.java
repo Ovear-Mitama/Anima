@@ -25,7 +25,7 @@ final class DragCursor {
 	 */
 	static double wrapAtScreenEdge() {
 		Minecraft mc = Minecraft.getInstance();
-		long win = mc.getWindow().getWindow();
+		long win = mc.getWindow().handle();
 		if (win == 0L) {
 			return 0;
 		}

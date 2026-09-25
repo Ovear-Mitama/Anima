@@ -7,7 +7,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import anima.engine.PlayMode;
 
@@ -32,11 +32,11 @@ import anima.engine.PlayMode;
  * </pre>
  */
 public final class AnimationDefinition {
-	private final ResourceLocation id;
+	private final Identifier id;
 	private final AnimationType type;
-	private final ResourceLocation texture;
+	private final Identifier texture;
 	private final List<FrameSpec> frames;
-	private final List<ResourceLocation> frameTextures;
+	private final List<Identifier> frameTextures;
 	private final int[] frameIndices;
 	private final int frameTimeMs;
 	private final boolean interpolate;
@@ -47,8 +47,8 @@ public final class AnimationDefinition {
 	private final String displayName;
 	private final List<EffectSpec> effects;
 
-	private AnimationDefinition(ResourceLocation id, AnimationType type, ResourceLocation texture,
-			List<FrameSpec> frames, List<ResourceLocation> frameTextures, int[] frameIndices,
+	private AnimationDefinition(Identifier id, AnimationType type, Identifier texture,
+			List<FrameSpec> frames, List<Identifier> frameTextures, int[] frameIndices,
 			int frameTimeMs, boolean interpolate, boolean loop, PlayMode playMode,
 			int textureWidth, int textureHeight, List<EffectSpec> effects, String displayName) {
 		this.id = id;
@@ -67,9 +67,9 @@ public final class AnimationDefinition {
 		this.effects = List.copyOf(effects);
 	}
 
-	public static AnimationDefinition fromJson(ResourceLocation id, JsonObject json) {
+	public static AnimationDefinition fromJson(Identifier id, JsonObject json) {
 		AnimationType type = AnimationType.fromString(optString(json, "type", "gui_sprite"));
-		ResourceLocation texture = parseLocation(json, "texture", id.getNamespace());
+		Identifier texture = parseLocation(json, "texture", id.getNamespace());
 
 		List<FrameSpec> frames = new ArrayList<>();
 		if (json.has("frames") && json.get("frames").isJsonArray()) {
@@ -87,10 +87,10 @@ public final class AnimationDefinition {
 			}
 		}
 
-		List<ResourceLocation> frameTextures = new ArrayList<>();
+		List<Identifier> frameTextures = new ArrayList<>();
 		if (json.has("frame_textures") && json.get("frame_textures").isJsonArray()) {
 			for (JsonElement el : json.getAsJsonArray("frame_textures")) {
-				frameTextures.add(ResourceLocation.parse(el.getAsString()));
+				frameTextures.add(Identifier.parse(el.getAsString()));
 			}
 		}
 
@@ -147,7 +147,7 @@ public final class AnimationDefinition {
 		}
 		if (!frameTextures.isEmpty()) {
 			JsonArray arr = new JsonArray();
-			for (ResourceLocation ft : frameTextures) {
+			for (Identifier ft : frameTextures) {
 				arr.add(ft.toString());
 			}
 			json.add("frame_textures", arr);
@@ -186,13 +186,13 @@ public final class AnimationDefinition {
 	}
 
 	/** Builder for programmatic registration. */
-	public static Builder builder(ResourceLocation id, AnimationType type) {
+	public static Builder builder(Identifier id, AnimationType type) {
 		return new Builder(id, type);
 	}
 
 	// ------------------------------------------------------------------ accessors
 
-	public ResourceLocation id() {
+	public Identifier id() {
 		return id;
 	}
 
@@ -200,7 +200,7 @@ public final class AnimationDefinition {
 		return type;
 	}
 
-	public ResourceLocation texture() {
+	public Identifier texture() {
 		return texture;
 	}
 
@@ -213,7 +213,7 @@ public final class AnimationDefinition {
 		return frames;
 	}
 
-	public List<ResourceLocation> frameTextures() {
+	public List<Identifier> frameTextures() {
 		return frameTextures;
 	}
 
@@ -267,23 +267,23 @@ public final class AnimationDefinition {
 		return json.has(key) && json.get(key).isJsonPrimitive() ? json.get(key).getAsFloat() : def;
 	}
 
-	private static ResourceLocation parseLocation(JsonObject json, String key, String defNamespace) {
+	private static Identifier parseLocation(JsonObject json, String key, String defNamespace) {
 		String s = optString(json, key, null);
 		if (s == null) {
 			return null;
 		}
 		if (s.contains(":")) {
-			return ResourceLocation.parse(s);
+			return Identifier.parse(s);
 		}
-		return ResourceLocation.fromNamespaceAndPath(defNamespace, s);
+		return Identifier.fromNamespaceAndPath(defNamespace, s);
 	}
 
 	public static final class Builder {
-		private final ResourceLocation id;
+		private final Identifier id;
 		private final AnimationType type;
-		private ResourceLocation texture;
+		private Identifier texture;
 		private final List<FrameSpec> frames = new ArrayList<>();
-		private final List<ResourceLocation> frameTextures = new ArrayList<>();
+		private final List<Identifier> frameTextures = new ArrayList<>();
 		private int[] frameIndices;
 		private int frameTimeMs = 50;
 		private boolean interpolate;
@@ -294,12 +294,12 @@ public final class AnimationDefinition {
 		private String displayName;
 		private final List<EffectSpec> effects = new ArrayList<>();
 
-		private Builder(ResourceLocation id, AnimationType type) {
+		private Builder(Identifier id, AnimationType type) {
 			this.id = id;
 			this.type = type;
 		}
 
-		public Builder texture(ResourceLocation texture) {
+		public Builder texture(Identifier texture) {
 			this.texture = texture;
 			return this;
 		}
@@ -309,7 +309,7 @@ public final class AnimationDefinition {
 			return this;
 		}
 
-		public Builder addFrameTexture(ResourceLocation rl) {
+		public Builder addFrameTexture(Identifier rl) {
 			this.frameTextures.add(rl);
 			return this;
 		}

@@ -9,11 +9,11 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import anima.Anima;
 import anima.client.gui.ClipEditorResult;
@@ -39,7 +39,7 @@ import anima.text.TextAnimationSpec;
 import anima.text.TextAnimations;
 
 /**
- * <b>Anima 的对外 API 门面</b>——给其它 mod 开发者使用的一站式入口。库内部还有更细的类
+ * <b>Anima 的对外 API 门面</b>——其它 mod 用这一个类就够。库内部还有更细的类
  * （{@link TextAnimations}、{@link WorldText3D}、{@link SpriteText}、{@link WorldParticles} …），
  * 这里把它们按用途聚合，方法都是薄封装，不改变语义。
  *
@@ -80,8 +80,8 @@ public final class AnimaApi {
 		return Anima.MOD_ID;
 	}
 
-	/** 在本库命名空间下创建 {@link ResourceLocation}。 */
-	public static ResourceLocation id(String path) {
+	/** 在本库命名空间下创建 {@link Identifier}。 */
+	public static Identifier id(String path) {
 		return Anima.id(path);
 	}
 
@@ -191,13 +191,13 @@ public final class AnimaApi {
 	 * 世界锚定的文字，但<b>画在 2D HUD 层</b>（把世界坐标投影到屏幕，大小不随距离变化）。
 	 * 适合近距离、需要固定像素大小的场合；要真实透视与遮挡请用 {@link #drawWorldText3D}。
 	 */
-	public static boolean drawWorldTextHud(GuiGraphics g, Font font, String text,
+	public static boolean drawWorldTextHud(GuiGraphicsExtractor g, Font font, String text,
 			double x, double y, double z, int color, TextAnimationSpec spec, float localMs, boolean shadow) {
 		return WorldText.draw(g, font, text, x, y, z, color, spec, localMs, shadow);
 	}
 
 	/** HUD 上的动画文字（在 GUI 渲染阶段调用），带自己的时钟与时长。 */
-	public static int drawHudText(GuiGraphics g, Font font, Component text, int x, int y, int color,
+	public static int drawHudText(GuiGraphicsExtractor g, Font font, Component text, int x, int y, int color,
 			TextAnimationSpec spec, float localMs, float durationMs) {
 		return TextAnimations.draw(g, font, text, x, y, color, spec, localMs, durationMs);
 	}
@@ -214,7 +214,7 @@ public final class AnimaApi {
 	 * @param alphaMul   调用方额外透明度（0-1）
 	 * @return 世界坐标在相机背后或完全透明时返回 false
 	 */
-	public static boolean drawWorldTextHudOffset(GuiGraphics g, Font font, Component text,
+	public static boolean drawWorldTextHudOffset(GuiGraphicsExtractor g, Font font, Component text,
 			double x, double y, double z, float offsetX, float offsetY, int color,
 			TextAnimationSpec spec, float localMs, float durationMs, boolean shadow,
 			float scaleMul, float alphaMul) {
@@ -265,7 +265,7 @@ public final class AnimaApi {
 	}
 
 	/** 用构建器注册一个动画定义（GUI 精灵 / 世界精灵 / 文本）。 */
-	public static AnimationDefinition.Builder animation(ResourceLocation id, AnimationType type) {
+	public static AnimationDefinition.Builder animation(Identifier id, AnimationType type) {
 		return AnimationDefinition.builder(id, type);
 	}
 
@@ -275,7 +275,7 @@ public final class AnimaApi {
 	}
 
 	/** 从 JSON 读一个动画定义（资源包格式）。 */
-	public static AnimationDefinition animationFromJson(ResourceLocation id, JsonObject json) {
+	public static AnimationDefinition animationFromJson(Identifier id, JsonObject json) {
 		return AnimationDefinition.fromJson(id, json);
 	}
 
@@ -306,7 +306,7 @@ public final class AnimaApi {
 	// ------------------------------------------------------------------ 纹理文字（贴图拼数字）
 
 	/** 造一个字形图集：贴图按 {@code cellW×cellH} 切格，{@code charset} 第 i 个字符用第 i 格。 */
-	public static SpriteText.Atlas spriteAtlas(ResourceLocation texture, int cellW, int cellH, String charset) {
+	public static SpriteText.Atlas spriteAtlas(Identifier texture, int cellW, int cellH, String charset) {
 		return SpriteText.Atlas.of(texture, cellW, cellH, charset);
 	}
 
@@ -316,7 +316,7 @@ public final class AnimaApi {
 	}
 
 	/** 用图集拼字符串（纹理学数字），可套用动画修饰符。 */
-	public static void drawSpriteText(GuiGraphics g, SpriteText.Atlas atlas, String text, float x, float y,
+	public static void drawSpriteText(GuiGraphicsExtractor g, SpriteText.Atlas atlas, String text, float x, float y,
 			int color, RenderModifier modifier) {
 		SpriteText.draw(g, atlas, text, x, y, color, modifier);
 	}
@@ -358,7 +358,7 @@ public final class AnimaApi {
 	}
 
 	/** 客户端资源重载监听（{@code F3+T} 后触发）。 */
-	public static void onClientReload(ResourceLocation id, net.minecraft.server.packs.resources.PreparableReloadListener listener) {
+	public static void onClientReload(Identifier id, net.minecraft.server.packs.resources.PreparableReloadListener listener) {
 		if (id == null || listener == null) {
 			return;
 		}
@@ -381,7 +381,7 @@ public final class AnimaApi {
 			PlatformHooks.get().addClientTickListener(r);
 		}
 		for (Object[] e : pendingReloadListeners) {
-			PlatformHooks.get().registerClientReloadListener((ResourceLocation) e[0],
+			PlatformHooks.get().registerClientReloadListener((Identifier) e[0],
 				(net.minecraft.server.packs.resources.PreparableReloadListener) e[1]);
 		}
 		int n = pendingWorldHooks.size() + pendingTickHooks.size() + pendingReloadListeners.size();

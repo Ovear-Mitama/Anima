@@ -155,7 +155,7 @@
 	"anima.ui.title.preview": "Animation Arrangement (Preview)",
 	"anima.ui.title.property": "Properties · ",
 	"anima.ui.title.text_object": "Text object properties",
-	"anima.ui.title.timeline": "Timeline (editor-style)",
+	"anima.ui.title.timeline": "Timeline",
 	"anima.ui.title.timeline_editor": "Timeline Editor",
 	"anima.ui.track.pos_x": "Position X",
 	"anima.ui.track.pos_y": "Position Y",
@@ -164,7 +164,7 @@
 	"anima.ui.type.text": "Text",
 	"anima.ui.type.world_sprite": "World sprite",
 	"anima.ui.type.world_sprite_hint": "World sprite animation (takes effect after an F3+T reload)",
-	"key.categories.anima": "Anima",
+	"key.category.anima.general": "Anima",
 	"key.anima.editor": "Open Animation Editor",
 	"key.anima.play_pause": "Play / Pause (editor)"
 }

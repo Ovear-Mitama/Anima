@@ -14,7 +14,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import anima.Anima;
 import anima.client.lang.L10n;
@@ -32,7 +32,7 @@ public final class AnimationConfigStore {
 	private static final String SUBDIR = "animations";
 
 	private final Path dir;
-	private final Map<ResourceLocation, AnimationDefinition> overrides = new LinkedHashMap<>();
+	private final Map<Identifier, AnimationDefinition> overrides = new LinkedHashMap<>();
 
 	private AnimationConfigStore() {
 		this.dir = defaultDir();
@@ -51,8 +51,8 @@ public final class AnimationConfigStore {
 	}
 
 	/** Loads all persisted overrides from disk (returns a fresh map; does not touch the manager). */
-	public Map<ResourceLocation, AnimationDefinition> loadAll() {
-		Map<ResourceLocation, AnimationDefinition> result = new LinkedHashMap<>();
+	public Map<Identifier, AnimationDefinition> loadAll() {
+		Map<Identifier, AnimationDefinition> result = new LinkedHashMap<>();
 		if (!Files.isDirectory(dir)) {
 			return result;
 		}
@@ -60,7 +60,7 @@ public final class AnimationConfigStore {
 			stream.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
 				try {
 					String content = new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
-					ResourceLocation id = idFromFileName(p.getFileName().toString());
+					Identifier id = idFromFileName(p.getFileName().toString());
 					if (id != null) {
 						JsonObject json = GSON.fromJson(content, JsonObject.class);
 						result.put(id, AnimationDefinition.fromJson(id, json));
@@ -86,18 +86,18 @@ public final class AnimationConfigStore {
 		if (overrides.isEmpty()) {
 			return;
 		}
-		for (Map.Entry<ResourceLocation, AnimationDefinition> e : overrides.entrySet()) {
+		for (Map.Entry<Identifier, AnimationDefinition> e : overrides.entrySet()) {
 			applyTo(manager, e.getKey(), e.getValue());
 		}
 	}
 
 	/** The current in-memory override for {@code id}, or {@code null}. */
-	public AnimationDefinition get(ResourceLocation id) {
+	public AnimationDefinition get(Identifier id) {
 		return overrides.get(id);
 	}
 
 	/** Saves an override to disk (and memory). */
-	public void save(ResourceLocation id, AnimationDefinition def) {
+	public void save(Identifier id, AnimationDefinition def) {
 		try {
 			Files.createDirectories(dir);
 			Path file = dir.resolve(fileNameFor(id));
@@ -109,7 +109,7 @@ public final class AnimationConfigStore {
 	}
 
 	/** Deletes an override from disk (and memory). Does not touch the manager. */
-	public void delete(ResourceLocation id) {
+	public void delete(Identifier id) {
 		overrides.remove(id);
 		try {
 			Files.deleteIfExists(dir.resolve(fileNameFor(id)));
@@ -119,7 +119,7 @@ public final class AnimationConfigStore {
 	}
 
 	/** Registers (or updates) a definition in the manager, including text tags and world sprites. */
-	public static void applyTo(AnimatedTextureManager manager, ResourceLocation id, AnimationDefinition def) {
+	public static void applyTo(AnimatedTextureManager manager, Identifier id, AnimationDefinition def) {
 		manager.registerDefinition(def);
 		if (def.type() == AnimationType.WORLD_SPRITE && def.texture() != null) {
 			manager.registerWorldSprite(def.texture(),
@@ -216,11 +216,11 @@ public final class AnimationConfigStore {
 		}
 	}
 
-	private static String fileNameFor(ResourceLocation id) {
+	private static String fileNameFor(Identifier id) {
 		return id.getNamespace() + "__" + id.getPath().replace('/', '_') + ".json";
 	}
 
-	private static ResourceLocation idFromFileName(String name) {
+	private static Identifier idFromFileName(String name) {
 		if (!name.endsWith(".json")) {
 			return null;
 		}
@@ -231,6 +231,6 @@ public final class AnimationConfigStore {
 		}
 		String ns = base.substring(0, sep);
 		String path = base.substring(sep + 2).replace('_', '/');
-		return ResourceLocation.fromNamespaceAndPath(ns, path);
+		return Identifier.fromNamespaceAndPath(ns, path);
 	}
 }

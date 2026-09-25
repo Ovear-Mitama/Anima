@@ -1,7 +1,7 @@
 package anima.client.gui;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import anima.engine.RenderModifier;
 
@@ -17,5 +17,5 @@ import anima.engine.RenderModifier;
  */
 @FunctionalInterface
 public interface PreviewRenderer {
-	void render(GuiGraphics g, Font font, int x, int y, int w, int h, RenderModifier modifier);
+	void render(GuiGraphicsExtractor g, Font font, int x, int y, int w, int h, RenderModifier modifier);
 }

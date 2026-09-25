@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 
 import anima.engine.AnimationEngine;
@@ -23,11 +23,11 @@ public final class AnimatedTextureManager {
 	private static AnimatedTextureManager INSTANCE;
 
 	private final RandomSource random = RandomSource.create();
-	private final Map<ResourceLocation, AnimationDefinition> definitions = new HashMap<>();
+	private final Map<Identifier, AnimationDefinition> definitions = new HashMap<>();
 	/** Original definitions loaded from resource packs (unmodified by config overrides). */
-	private final Map<ResourceLocation, AnimationDefinition> resourceDefinitions = new HashMap<>();
-	private final Map<ResourceLocation, AnimatedGuiSprite> guiSprites = new HashMap<>();
-	private final Map<ResourceLocation, WorldSpriteAnimationSpec> worldSprites = new HashMap<>();
+	private final Map<Identifier, AnimationDefinition> resourceDefinitions = new HashMap<>();
+	private final Map<Identifier, AnimatedGuiSprite> guiSprites = new HashMap<>();
+	private final Map<Identifier, WorldSpriteAnimationSpec> worldSprites = new HashMap<>();
 	private VirtualAnimationPack virtualPack;
 
 	private AnimatedTextureManager() {
@@ -47,7 +47,8 @@ public final class AnimatedTextureManager {
 
 	/** Elapsed game time in ms since the previous tick, from the client's delta tracker. */
 	public static float clientTickDeltaMs() {
-		return Minecraft.getInstance().getTimer().getGameTimeDeltaTicks() * 50f;
+		// 26.1：Minecraft#getTimer 已移除，改用 DeltaTracker
+		return Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaTicks() * 50f;
 	}
 
 	// ------------------------------------------------------------------ definitions
@@ -66,12 +67,12 @@ public final class AnimatedTextureManager {
 	}
 
 	/** The definitions loaded from resource packs (unaffected by config overrides). */
-	public Map<ResourceLocation, AnimationDefinition> resourceDefinitions() {
+	public Map<Identifier, AnimationDefinition> resourceDefinitions() {
 		return resourceDefinitions;
 	}
 
 	/** All currently registered definitions (resource-pack + config overrides). */
-	public Map<ResourceLocation, AnimationDefinition> definitions() {
+	public Map<Identifier, AnimationDefinition> definitions() {
 		return definitions;
 	}
 
@@ -93,12 +94,12 @@ public final class AnimatedTextureManager {
 		}
 	}
 
-	public AnimationDefinition definition(ResourceLocation id) {
+	public AnimationDefinition definition(Identifier id) {
 		return definitions.get(id);
 	}
 
 	/** Restores a resource-pack definition for {@code id}, removing any config override. */
-	public void resetDefinition(ResourceLocation id) {
+	public void resetDefinition(Identifier id) {
 		AnimationDefinition res = resourceDefinitions.get(id);
 		closeGuiSprites(id);
 		if (res != null) {
@@ -118,12 +119,12 @@ public final class AnimatedTextureManager {
 	// ------------------------------------------------------------------ GUI sprites
 
 	/** Returns the shared template sprite for a looping definition. */
-	public AnimatedGuiSprite getGuiSprite(ResourceLocation id) {
+	public AnimatedGuiSprite getGuiSprite(Identifier id) {
 		return guiSprites.computeIfAbsent(id, this::createGuiSprite);
 	}
 
 	/** Creates a fresh instance (own timeline) for one-shot animations. */
-	public AnimatedGuiSprite createGuiInstance(ResourceLocation id) {
+	public AnimatedGuiSprite createGuiInstance(Identifier id) {
 		AnimationDefinition def = definitions.get(id);
 		if (def == null) {
 			return null;
@@ -132,7 +133,7 @@ public final class AnimatedTextureManager {
 	}
 
 	/** Convenience: draws the shared template sprite at the given position/size. */
-	public void drawAnimated(GuiGraphics guiGraphics, ResourceLocation id, int x, int y, int w, int h) {
+	public void drawAnimated(GuiGraphicsExtractor guiGraphics, Identifier id, int x, int y, int w, int h) {
 		AnimatedGuiSprite sprite = getGuiSprite(id);
 		if (sprite != null) {
 			sprite.draw(guiGraphics, x, y, w, h, AnimationEngine.get().globalTimeMs());
@@ -146,7 +147,7 @@ public final class AnimatedTextureManager {
 	}
 
 	/** Releases the cached GUI sprite for a single id. */
-	public void closeGuiSprites(ResourceLocation id) {
+	public void closeGuiSprites(Identifier id) {
 		AnimatedGuiSprite sprite = guiSprites.remove(id);
 		if (sprite != null) {
 			sprite.close();
@@ -156,20 +157,20 @@ public final class AnimatedTextureManager {
 	// ------------------------------------------------------------------ world sprites
 
 	/** Registers (or replaces) an in-world sprite frame animation. Applied on next reload. */
-	public void registerWorldSprite(ResourceLocation sprite, WorldSpriteAnimationSpec spec) {
+	public void registerWorldSprite(Identifier sprite, WorldSpriteAnimationSpec spec) {
 		worldSprites.put(sprite, spec);
 	}
 
-	public WorldSpriteAnimationSpec worldSprite(ResourceLocation sprite) {
+	public WorldSpriteAnimationSpec worldSprite(Identifier sprite) {
 		return worldSprites.get(sprite);
 	}
 
-	public Map<ResourceLocation, WorldSpriteAnimationSpec> worldSprites() {
+	public Map<Identifier, WorldSpriteAnimationSpec> worldSprites() {
 		return worldSprites;
 	}
 
 	/** Removes the given world-sprite animations (used by the JSON loader on reload). */
-	public void removeWorldSprites(Set<ResourceLocation> sprites) {
+	public void removeWorldSprites(Set<Identifier> sprites) {
 		sprites.forEach(worldSprites::remove);
 	}
 
@@ -185,7 +186,7 @@ public final class AnimatedTextureManager {
 		return random;
 	}
 
-	private AnimatedGuiSprite createGuiSprite(ResourceLocation id) {
+	private AnimatedGuiSprite createGuiSprite(Identifier id) {
 		AnimationDefinition def = definitions.get(id);
 		if (def == null) {
 			return null;

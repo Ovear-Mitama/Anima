@@ -155,7 +155,7 @@
 	"anima.ui.title.preview": "动画效果编排（预览）",
 	"anima.ui.title.property": "属性 · ",
 	"anima.ui.title.text_object": "文本对象属性",
-	"anima.ui.title.timeline": "时间线（剪映式）",
+	"anima.ui.title.timeline": "时间线",
 	"anima.ui.title.timeline_editor": "时间线编辑器",
 	"anima.ui.track.pos_x": "位置 X",
 	"anima.ui.track.pos_y": "位置 Y",
@@ -164,7 +164,7 @@
 	"anima.ui.type.text": "文本",
 	"anima.ui.type.world_sprite": "世界内精灵",
 	"anima.ui.type.world_sprite_hint": "世界内精灵动画 (F3+T 重载后生效)",
-	"key.categories.anima": "Anima",
+	"key.category.anima.general": "Anima",
 	"key.anima.editor": "打开动画编辑器",
 	"key.anima.play_pause": "播放 / 暂停（编辑器）"
 }

@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 
@@ -30,7 +30,7 @@ public class SearchField extends EditBox {
 	}
 
 	@Override
-	public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		boolean foc = isFocused();
 		boolean over = isHoveredOrFocused();
 		int x = getX();
@@ -43,9 +43,9 @@ public class SearchField extends EditBox {
 		Font font = Minecraft.getInstance().font;
 		String v = getValue();
 		if (v.isEmpty()) {
-			g.drawString(font, placeholder, x + 1, y + 2, 0xFF6A6A6A);
+			g.text(font, placeholder, x + 1, y + 2, 0xFF6A6A6A);
 		} else {
-			g.drawString(font, v, x + 1, y + 2, GuiTheme.TEXT);
+			g.text(font, v, x + 1, y + 2, GuiTheme.TEXT);
 		}
 		if (foc && (System.currentTimeMillis() / 500L) % 2L == 0L) {
 			// 光标画在真实的插入点，而不是永远画在末尾（否则方向键移动光标时看不出来）

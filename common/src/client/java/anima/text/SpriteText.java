@@ -2,8 +2,9 @@ package anima.text;
 
 import com.google.gson.JsonObject;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
 import anima.engine.RenderModifier;
 
@@ -21,7 +22,7 @@ import anima.engine.RenderModifier;
  * <pre>{@code
  * // 例：一张 10 格的数字图集，用本库的动画（DE 式跳字）
  * SpriteText.Atlas digits = SpriteText.Atlas.of(
- *     ResourceLocation.parse("mymod:textures/gui/digits.png"), 8, 12, "0123456789");
+ *     Identifier.parse("mymod:textures/gui/digits.png"), 8, 12, "0123456789");
  * SpriteText.draw(g, digits, String.valueOf(damage), x, y, 0xFFFFFFFF, spec, localMs, 1000f);
  * }</pre>
  */
@@ -34,10 +35,10 @@ public final class SpriteText {
 	 * 字形图集。{@code charset} 里第 i 个字符使用第 i 格；{@code scale} 是整体缩放
 	 * （图集美术尺寸→屏幕尺寸的基准倍率）。
 	 */
-	public record Atlas(ResourceLocation texture, int cellW, int cellH, int columns, String charset, float scale) {
+	public record Atlas(Identifier texture, int cellW, int cellH, int columns, String charset, float scale) {
 
 		/** 常用构造：格子按 charset 长度自动一行排布，缩放 1×。 */
-		public static Atlas of(ResourceLocation texture, int cellW, int cellH, String charset) {
+		public static Atlas of(Identifier texture, int cellW, int cellH, String charset) {
 			String cs = charset == null || charset.isEmpty() ? "0123456789" : charset;
 			return new Atlas(texture, Math.max(1, cellW), Math.max(1, cellH),
 				Math.max(1, cs.length()), cs, 1f);
@@ -53,7 +54,7 @@ public final class SpriteText {
 			int cellH = json.has("cell_height") ? json.get("cell_height").getAsInt() : 8;
 			int columns = json.has("columns") ? json.get("columns").getAsInt() : Math.max(1, cs.length());
 			float scale = json.has("scale") ? json.get("scale").getAsFloat() : 1f;
-			return new Atlas(ResourceLocation.parse(json.get("texture").getAsString()),
+			return new Atlas(Identifier.parse(json.get("texture").getAsString()),
 				Math.max(1, cellW), Math.max(1, cellH), Math.max(1, columns), cs, scale);
 		}
 
@@ -82,7 +83,7 @@ public final class SpriteText {
 	}
 
 	/** 以 (x, y) 为左上角绘制，{@code modifier} 提供位移/缩放/颜色/透明度（可为 null）。 */
-	public static void draw(GuiGraphics g, Atlas atlas, String text, float x, float y, int color, RenderModifier m) {
+	public static void draw(GuiGraphicsExtractor g, Atlas atlas, String text, float x, float y, int color, RenderModifier m) {
 		if (atlas == null || text == null || text.isEmpty()) {
 			return;
 		}
@@ -103,10 +104,11 @@ public final class SpriteText {
 		float baseG = ((color >> 8) & 0xFF) / 255f;
 		float baseB = (color & 0xFF) / 255f;
 		float k = atlas.scale();
-		g.pose().pushPose();
-		g.pose().translate(x + tx, y + ty, 0f);
-		g.pose().scale(k * sx, k * sy, 1f);
-		g.setColor(baseR * r, baseG * gg, baseB * b, baseA * a);
+		// 26.1 起 GUI 没有全局 setColor，改为把染色直接传给 blit
+		int tint = argb(baseA * a, baseR * r, baseG * gg, baseB * b);
+		g.pose().pushMatrix();
+		g.pose().translate(x + tx, y + ty);
+		g.pose().scale(k * sx, k * sy);
 		int texW = atlas.textureWidth();
 		int texH = atlas.textureHeight();
 		float cx = 0f;
@@ -118,16 +120,25 @@ public final class SpriteText {
 			}
 			int u = (idx % atlas.columns()) * atlas.cellW();
 			int v = (idx / atlas.columns()) * atlas.cellH();
-			g.blit(atlas.texture(), Math.round(cx), 0, atlas.cellW(), atlas.cellH(),
-				u, v, atlas.cellW(), atlas.cellH(), texW, texH);
+			g.blit(RenderPipelines.GUI_TEXTURED, atlas.texture(), Math.round(cx), 0,
+				(float) u, (float) v, atlas.cellW(), atlas.cellH(), texW, texH, tint);
 			cx += atlas.cellW();
 		}
-		g.setColor(1f, 1f, 1f, 1f);
-		g.pose().popPose();
+		g.pose().popMatrix();
+	}
+
+	/** 把 0-1 的分量系数打包成 ARGB（越界值夹紧）。 */
+	private static int argb(float a, float r, float g, float b) {
+		return (Math.round(clamp01(a) * 255f) << 24) | (Math.round(clamp01(r) * 255f) << 16)
+			| (Math.round(clamp01(g) * 255f) << 8) | Math.round(clamp01(b) * 255f);
+	}
+
+	private static float clamp01(float v) {
+		return Math.max(0f, Math.min(1f, v));
 	}
 
 	/** 用动画规格 + 本地时钟 / 片段时长绘制（与 {@code TextAnimations.draw} 的时长语义一致）。 */
-	public static void draw(GuiGraphics g, Atlas atlas, String text, float x, float y, int color,
+	public static void draw(GuiGraphicsExtractor g, Atlas atlas, String text, float x, float y, int color,
 			TextAnimationSpec spec, float localMs, float durationMs) {
 		RenderModifier m = spec == null ? null : spec.computeModifier(localMs, durationMs);
 		draw(g, atlas, text, x, y, color, m);

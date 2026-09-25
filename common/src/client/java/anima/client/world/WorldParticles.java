@@ -5,7 +5,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 
 /**
@@ -26,11 +26,13 @@ public final class WorldParticles {
 		if (registryId == null) {
 			return null;
 		}
-		ResourceLocation id = ResourceLocation.tryParse(registryId);
+		Identifier id = Identifier.tryParse(registryId);
 		if (id == null) {
 			return null;
 		}
-		ParticleType<?> type = BuiltInRegistries.PARTICLE_TYPE.get(id);
+		// 26.1 起注册表查询返回 Optional<Reference<...>>
+		ParticleType<?> type = BuiltInRegistries.PARTICLE_TYPE.get(id)
+			.map(net.minecraft.core.Holder::value).orElse(null);
 		return type instanceof ParticleOptions options ? options : null;
 	}
 
@@ -63,7 +65,7 @@ public final class WorldParticles {
 		if (options == null) {
 			return 0;
 		}
-		RandomSource random = level.random;
+		RandomSource random = level.getRandom();
 		for (int i = 0; i < count; i++) {
 			double px = x + random.nextGaussian() * deltaX;
 			double py = y + random.nextGaussian() * deltaY;

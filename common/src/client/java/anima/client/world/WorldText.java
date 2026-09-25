@@ -1,7 +1,7 @@
 package anima.client.world;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import anima.engine.RenderModifier;
@@ -21,7 +21,7 @@ public final class WorldText {
 	}
 
 	/** Projects the world position and draws {@code text} there, centred horizontally. */
-	public static boolean draw(GuiGraphics g, Font font, String text, double worldX, double worldY, double worldZ,
+	public static boolean draw(GuiGraphicsExtractor g, Font font, String text, double worldX, double worldY, double worldZ,
 			int color, TextAnimationSpec spec, float localMs, boolean shadow) {
 		RenderModifier modifier = spec == null ? null : spec.computeModifier(localMs);
 		return draw(g, font, text, worldX, worldY, worldZ, color, modifier, shadow, true);
@@ -32,7 +32,7 @@ public final class WorldText {
 	 * evaluated at {@code localMs} with a clip {@code durationMs} — the code-level hook for
 	 * "时长 + xyz 偏移" (e.g. random displacement for jumping damage numbers, like Damage-Engine).
 	 */
-	public static boolean draw(GuiGraphics g, Font font, String text, double worldX, double worldY, double worldZ,
+	public static boolean draw(GuiGraphicsExtractor g, Font font, String text, double worldX, double worldY, double worldZ,
 			double offX, double offY, double offZ, int color, TextAnimationSpec spec, float localMs, float durationMs, boolean shadow) {
 		RenderModifier modifier = spec == null ? null : spec.computeModifier(localMs, durationMs);
 		return draw(g, font, text, worldX + offX, worldY + offY, worldZ + offZ, color, modifier, shadow, true);
@@ -49,7 +49,7 @@ public final class WorldText {
 	 *
 	 * @return {@code false} when the anchor is behind the camera or the text is fully transparent
 	 */
-	public static boolean drawAnchored(GuiGraphics g, Font font, Component text, double worldX, double worldY,
+	public static boolean drawAnchored(GuiGraphicsExtractor g, Font font, Component text, double worldX, double worldY,
 			double worldZ, float offsetX, float offsetY, int color, TextAnimationSpec spec,
 			float localMs, float durationMs, boolean shadow, float scaleMul, float alphaMul) {
 		float[] p = WorldProjection.project(worldX, worldY, worldZ);
@@ -61,7 +61,7 @@ public final class WorldText {
 	}
 
 	/** Projects the world position and draws {@code text} with a precomputed modifier. */
-	public static boolean draw(GuiGraphics g, Font font, String text, double worldX, double worldY, double worldZ,
+	public static boolean draw(GuiGraphicsExtractor g, Font font, String text, double worldX, double worldY, double worldZ,
 			int color, RenderModifier modifier, boolean shadow, boolean centered) {
 		float[] p = WorldProjection.project(worldX, worldY, worldZ);
 		if (p == null) {
@@ -72,7 +72,7 @@ public final class WorldText {
 	}
 
 	/** Draws {@code text} at screen coordinates with the modifier applied (no projection). */
-	public static boolean drawAt(GuiGraphics g, Font font, String text, float x, float y, int color,
+	public static boolean drawAt(GuiGraphicsExtractor g, Font font, String text, float x, float y, int color,
 			RenderModifier modifier, boolean shadow) {
 		return drawAt(g, font, text, x, y, color, modifier, shadow, 1f, 1f);
 	}
@@ -81,7 +81,7 @@ public final class WorldText {
 	 * Centered variant of {@link #drawAt}: (x, y) is the CENTER of the text. The editor preview
 	 * uses this so changing the object's scale grows the text in place instead of shifting it.
 	 */
-	public static boolean drawAtCentered(GuiGraphics g, Font font, String text, float x, float y, int color,
+	public static boolean drawAtCentered(GuiGraphicsExtractor g, Font font, String text, float x, float y, int color,
 			RenderModifier modifier, boolean shadow, float scaleMul, float alphaMul) {
 		int finalColor = color;
 		float tx = 0f;
@@ -101,17 +101,17 @@ public final class WorldText {
 			return false; // invisible
 		}
 		finalColor = (alpha << 24) | (finalColor & 0x00FFFFFF);
-		g.pose().pushPose();
-		g.pose().translate(x, y, 0f);
-		g.pose().translate(tx, ty, 0f);
-		g.pose().scale(sx, sy, 1f); // scaling happens around the anchor → the text simply grows
-		g.drawString(font, text, -font.width(text) / 2, -4, finalColor, shadow);
-		g.pose().popPose();
+		g.pose().pushMatrix();
+		g.pose().translate(x, y);
+		g.pose().translate(tx, ty);
+		g.pose().scale(sx, sy); // scaling happens around the anchor → the text simply grows
+		g.text(font, text, -font.width(text) / 2, -4, finalColor, shadow);
+		g.pose().popMatrix();
 		return true;
 	}
 
 	/** {@link Component} variant of {@link #drawAtCentered} (keeps styles such as bold). */
-	public static boolean drawAtCentered(GuiGraphics g, Font font, Component text, float x, float y, int color,
+	public static boolean drawAtCentered(GuiGraphicsExtractor g, Font font, Component text, float x, float y, int color,
 			RenderModifier modifier, boolean shadow, float scaleMul, float alphaMul) {
 		int finalColor = color;
 		float tx = 0f;
@@ -131,12 +131,12 @@ public final class WorldText {
 			return false; // invisible
 		}
 		finalColor = (alpha << 24) | (finalColor & 0x00FFFFFF);
-		g.pose().pushPose();
-		g.pose().translate(x, y, 0f);
-		g.pose().translate(tx, ty, 0f);
-		g.pose().scale(sx, sy, 1f); // scaling happens around the anchor → the text simply grows
-		g.drawString(font, text, -font.width(text) / 2, -4, finalColor, shadow);
-		g.pose().popPose();
+		g.pose().pushMatrix();
+		g.pose().translate(x, y);
+		g.pose().translate(tx, ty);
+		g.pose().scale(sx, sy); // scaling happens around the anchor → the text simply grows
+		g.text(font, text, -font.width(text) / 2, -4, finalColor, shadow);
+		g.pose().popMatrix();
 		return true;
 	}
 
@@ -144,7 +144,7 @@ public final class WorldText {
 	 * Draws {@code text} at screen coordinates with the modifier applied plus an extra object
 	 * scale / opacity (used by object properties with keyframes).
 	 */
-	public static boolean drawAt(GuiGraphics g, Font font, String text, float x, float y, int color,
+	public static boolean drawAt(GuiGraphicsExtractor g, Font font, String text, float x, float y, int color,
 			RenderModifier modifier, boolean shadow, float scaleMul, float alphaMul) {
 		int finalColor = color;
 		float tx = 0f;
@@ -164,14 +164,14 @@ public final class WorldText {
 			return false; // invisible
 		}
 		finalColor = (alpha << 24) | (finalColor & 0x00FFFFFF);
-		g.pose().pushPose();
-		g.pose().translate(tx, ty, 0f);
-		g.pose().scale(sx, sy, 1f);
+		g.pose().pushMatrix();
+		g.pose().translate(tx, ty);
+		g.pose().scale(sx, sy);
 		// translate to the exact (fractional) position and draw at 0,0 — like Damage-Engine —
 		// so the text follows the camera smoothly instead of snapping to whole pixels
-		g.pose().translate(x, y, 0f);
-		g.drawString(font, text, 0, 0, finalColor, shadow);
-		g.pose().popPose();
+		g.pose().translate(x, y);
+		g.text(font, text, 0, 0, finalColor, shadow);
+		g.pose().popMatrix();
 		return true;
 	}
 }

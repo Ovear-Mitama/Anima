@@ -6,10 +6,10 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.HolderGetter;
-import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
@@ -57,7 +57,8 @@ public final class ConfigWorldLauncher {
 	private static final int LOCKED_TIME_TICK = 15000;
 
 	/** Once the config world is loaded, freeze it at NIGHT (tick 15000) so the preview looks
-	 *  the same every time and bright/glowing effects read clearly. */
+	 *  the same every time and bright/glowing effects read clearly. 26.1 起 GameRules 不再随
+	 *  {@link LevelSettings} 创建，改为在世界加载后直接改整合服务端的规则。 */
 	private static void tickNight() {
 		if (nightApplied) {
 			return;
@@ -72,7 +73,15 @@ public final class ConfigWorldLauncher {
 		}
 		nightApplied = true;
 		mc.player.connection.sendCommand("time set " + LOCKED_TIME_TICK);
-		mc.player.connection.sendCommand("gamerule doDaylightCycle false");
+		GameRules rules = server.getGameRules();
+		rules.set(GameRules.ADVANCE_TIME, false, server);
+		rules.set(GameRules.ADVANCE_WEATHER, false, server);
+		rules.set(GameRules.SPAWN_MOBS, false, server);
+		rules.set(GameRules.MOB_DROPS, false, server);
+		rules.set(GameRules.MOB_GRIEFING, false, server);
+		rules.set(GameRules.RANDOM_TICK_SPEED, 0, server);
+		rules.set(GameRules.KEEP_INVENTORY, true, server);
+		rules.set(GameRules.SPECTATORS_GENERATE_CHUNKS, true, server);
 	}
 
 	/** Enters the config world (creating it on first use). No-op when already inside a world. */
@@ -89,22 +98,14 @@ public final class ConfigWorldLauncher {
 		}
 		// no structures at all (no villages/mineshafts) — the user only wants a clean floor
 		WorldOptions options = WorldOptions.defaultWithRandomSeed().withStructures(false);
-		GameRules rules = new GameRules();
-		rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, null);
-		rules.getRule(GameRules.RULE_DOMOBLOOT).set(false, null);
-		rules.getRule(GameRules.RULE_MOBGRIEFING).set(false, null);
-		rules.getRule(GameRules.RULE_DOFIRETICK).set(false, null);
-		rules.getRule(GameRules.RULE_RANDOMTICKING).set(0, null);
-		rules.getRule(GameRules.RULE_WEATHER_CYCLE).set(false, null);
-		rules.getRule(GameRules.RULE_KEEPINVENTORY).set(true, null);
-		rules.getRule(GameRules.RULE_SPECTATORSGENERATECHUNKS).set(true, null);
-		LevelSettings settings = new LevelSettings(LEVEL_ID, GameType.SPECTATOR, false,
-			Difficulty.PEACEFUL, true, rules, WorldDataConfiguration.DEFAULT);
+		LevelSettings settings = new LevelSettings(LEVEL_ID, GameType.SPECTATOR,
+			new LevelSettings.DifficultySettings(Difficulty.PEACEFUL, false, false), true,
+			WorldDataConfiguration.DEFAULT);
 		mc.createWorldOpenFlows().createFreshLevel(LEVEL_ID, settings, options, ConfigWorldLauncher::dimensions, parent);
 	}
 
 	/** Overworld = superflat with a single white-concrete floor layer and a structure-free biome. */
-	private static WorldDimensions dimensions(RegistryAccess registryAccess) {
+	private static WorldDimensions dimensions(HolderLookup.Provider registryAccess) {
 		HolderGetter<Biome> biomes = registryAccess.lookupOrThrow(Registries.BIOME);
 		HolderGetter<StructureSet> structures = registryAccess.lookupOrThrow(Registries.STRUCTURE_SET);
 		HolderGetter<PlacedFeature> features = registryAccess.lookupOrThrow(Registries.PLACED_FEATURE);

@@ -3,7 +3,7 @@ package anima.client.world;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -81,7 +81,7 @@ public final class WorldText3D {
 			return false;
 		}
 		Font font = Minecraft.getInstance().font;
-		Vec3 cam = camera.getPosition();
+		Vec3 cam = camera.position();
 		// 相机空间：世界坐标 - 相机位置，然后对齐相机朝向（与名字牌相同的姿态）
 		// 整段缩放（scaleMul）作用在基础矩阵上：字与字的推进间距跟着一起缩放，和原版名字牌的
 		// poseStack.scale 一致。若改成"按每个字各自中心"缩放，字会变小但间距不变（看起来像 "8 . 0"）。
@@ -118,7 +118,7 @@ public final class WorldText3D {
 				// 把整个字形深度偏向相机）提升远距离深度精度。
 				// 阴影参与深度测试 → 会被挡在文字前的实体/方块正确遮挡，不再"穿墙/穿实体"。
 				font.drawInBatch(ch, -w / 2f, -GLYPH_HALF, col, true, m, buffers,
-					Font.DisplayMode.POLYGON_OFFSET, 0, LightTexture.FULL_BRIGHT);
+					Font.DisplayMode.POLYGON_OFFSET, 0, LightCoordsUtil.FULL_BRIGHT);
 				drawn = true;
 			}
 			cx += w;
@@ -161,7 +161,7 @@ public final class WorldText3D {
 		}
 		Font font = Minecraft.getInstance().font;
 		Style style = text.getStyle();
-		Vec3 cam = camera.getPosition();
+		Vec3 cam = camera.position();
 		// 相机空间：世界坐标 - 相机位置，然后对齐相机朝向（与名字牌相同的姿态）
 		float s = Math.max(0.01f, scaleMul);
 		Matrix4f base = new Matrix4f()
@@ -203,14 +203,14 @@ public final class WorldText3D {
 					// 正文保持 see-through 无深度测试 → 永远可见。阴影与正文不同缓冲、正文后刷 → 压在阴影上。
 					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, shadowColor(col), false,
 						new Matrix4f(m).translate(SHADOW_OFFSET, SHADOW_OFFSET, 0f), buffers,
-						Font.DisplayMode.POLYGON_OFFSET, 0, LightTexture.FULL_BRIGHT);
+						Font.DisplayMode.POLYGON_OFFSET, 0, LightCoordsUtil.FULL_BRIGHT);
 					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
-						mode, 0, LightTexture.FULL_BRIGHT);
+						mode, 0, LightCoordsUtil.FULL_BRIGHT);
 				} else {
 					// 常规通道只补画正文（不带阴影）：它是与穿透通道配套的"遮挡"补画，
 					// 若再画阴影，阴影会落在穿透正文之后/与正文共面，重现 z-fighting 或压暗。
 					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
-						mode, 0, LightTexture.FULL_BRIGHT);
+						mode, 0, LightCoordsUtil.FULL_BRIGHT);
 				}
 				drawn = true;
 			}

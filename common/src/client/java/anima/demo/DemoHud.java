@@ -2,7 +2,7 @@ package anima.demo;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import anima.Anima;
@@ -24,7 +24,7 @@ public final class DemoHud {
 	private DemoHud() {
 	}
 
-	public static void render(GuiGraphics guiGraphics) {
+	public static void extractRenderState(GuiGraphicsExtractor guiGraphics) {
 		if (!ENABLED) {
 			return;
 		}
@@ -51,7 +51,7 @@ public final class DemoHud {
 		}
 
 		// 3. Tag-based auto animation (any text component, animated by the Font mixin).
-		guiGraphics.drawString(font,
+		guiGraphics.text(font,
 			TextAnimations.parse("<anim:demo_text>Tag-based animated text</anim:demo_text>"),
 			screenWidth / 2 - 78, 112, 0xFFFFFFFF);
 	}

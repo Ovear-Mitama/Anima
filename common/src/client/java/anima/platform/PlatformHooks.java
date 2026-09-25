@@ -1,6 +1,6 @@
 package anima.platform;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 
 /**
@@ -31,7 +31,7 @@ public abstract class PlatformHooks {
 	public abstract void addClientTickListener(Runnable runnable);
 
 	/** Registers a client-side resource reload listener. */
-	public abstract void registerClientReloadListener(ResourceLocation id, PreparableReloadListener listener);
+	public abstract void registerClientReloadListener(Identifier id, PreparableReloadListener listener);
 
 	/** Registers a hook invoked during the world render pass (for world-space drawing). */
 	public abstract void addWorldRenderListener(WorldRenderHook hook);

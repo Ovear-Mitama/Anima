@@ -8,9 +8,10 @@ import java.util.List;
 import com.mojang.blaze3d.platform.NativeImage;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import anima.Anima;
 import anima.api.IAnimationEffect;
@@ -28,7 +29,7 @@ public final class AnimatedGuiSprite {
 	private final AnimationDefinition def;
 	private final float startMs;
 	private final List<EffectInstance> effects;
-	private final ResourceLocation blitTexture;
+	private final Identifier blitTexture;
 
 	private List<FrameSpec> frames;
 	private DynamicTexture dynamicTexture;
@@ -75,22 +76,34 @@ public final class AnimatedGuiSprite {
 	}
 
 	/** Draws the current frame at {@code (x, y)} with size {@code (w, h)}. */
-	public void draw(GuiGraphics guiGraphics, int x, int y, int w, int h, float timeMs) {
+	public void draw(GuiGraphicsExtractor guiGraphics, int x, int y, int w, int h, float timeMs) {
 		FrameSpec frame = currentFrame(timeMs);
 		if (frame == null || closed) {
 			return;
 		}
 		RenderModifier m = computeModifier(timeMs);
-		guiGraphics.pose().pushPose();
-		guiGraphics.pose().translate(x + m.tx, y + m.ty, 0f);
-		guiGraphics.pose().scale(m.sx, m.sy, 1f);
-		guiGraphics.setColor(m.r, m.g, m.b, m.a);
-		guiGraphics.blit(blitTexture, 0, 0, w, h,
+		int color = argb(m.a, m.r, m.g, m.b);
+		guiGraphics.pose().pushMatrix();
+		guiGraphics.pose().translate(x + m.tx, y + m.ty);
+		// 26.1 的 blit 采样区域与绘制尺寸相同，因此把「贴图帧 → 目标尺寸」的缩放放进姿态矩阵
+		float kx = frame.w() <= 0f ? 1f : w / frame.w();
+		float ky = frame.h() <= 0f ? 1f : h / frame.h();
+		guiGraphics.pose().scale(kx * m.sx, ky * m.sy);
+		guiGraphics.blit(RenderPipelines.GUI_TEXTURED, blitTexture, 0, 0,
 			frame.u() + m.uvU, frame.v() + m.uvV,
 			(int) frame.w(), (int) frame.h(),
-			(int) def.textureWidth(), (int) def.textureHeight());
-		guiGraphics.setColor(1f, 1f, 1f, 1f);
-		guiGraphics.pose().popPose();
+			(int) def.textureWidth(), (int) def.textureHeight(), color);
+		guiGraphics.pose().popMatrix();
+	}
+
+	/** 把 0-1 的分量系数打包成 ARGB（0-1 之外的值会被夹紧）。 */
+	private static int argb(float a, float r, float g, float b) {
+		return (Math.round(clamp01(a) * 255f) << 24) | (Math.round(clamp01(r) * 255f) << 16)
+			| (Math.round(clamp01(g) * 255f) << 8) | Math.round(clamp01(b) * 255f);
+	}
+
+	private static float clamp01(float v) {
+		return Math.max(0f, Math.min(1f, v));
 	}
 
 	/** Releases the underlying dynamic texture. Safe to call multiple times. */
@@ -125,7 +138,7 @@ public final class AnimatedGuiSprite {
 		int h = 0;
 		try {
 			for (int i = 0; i < images.length; i++) {
-				ResourceLocation rl = def.frameTextures().get(i);
+				Identifier rl = def.frameTextures().get(i);
 				try (InputStream is = mc.getResourceManager().open(rl)) {
 					images[i] = NativeImage.read(is);
 				}
@@ -139,13 +152,13 @@ public final class AnimatedGuiSprite {
 			for (int i = 0; i < images.length; i++) {
 				for (int x = 0; x < w; x++) {
 					for (int y = 0; y < h; y++) {
-						stacked.setPixelRGBA(x, y + i * h, images[i].getPixelRGBA(x, y));
+						stacked.setPixel(x, y + i * h, images[i].getPixel(x, y));
 					}
 				}
 				images[i].close();
 			}
 
-			dynamicTexture = new DynamicTexture(stacked);
+			dynamicTexture = new DynamicTexture(() -> "anima_dynamic/" + def.id().getPath(), stacked);
 			mc.getTextureManager().register(blitTexture, dynamicTexture);
 			dynamicTexture.upload();
 

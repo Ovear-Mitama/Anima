@@ -11,11 +11,12 @@ import java.util.Set;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
+import net.minecraft.server.packs.metadata.MetadataSectionType;
+import net.minecraft.server.packs.metadata.pack.PackFormat;
 import net.minecraft.server.packs.metadata.pack.PackMetadataSection;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.resources.IoSupplier;
@@ -45,11 +46,11 @@ public final class VirtualAnimationPack implements PackResources {
 	}
 
 	@Override
-	public IoSupplier<InputStream> getResource(PackType packType, ResourceLocation location) {
+	public IoSupplier<InputStream> getResource(PackType packType, Identifier location) {
 		if (packType != PackType.CLIENT_RESOURCES) {
 			return null;
 		}
-		ResourceLocation sprite = animationMetaToSprite(location);
+		Identifier sprite = animationMetaToSprite(location);
 		if (sprite == null) {
 			return null;
 		}
@@ -66,8 +67,8 @@ public final class VirtualAnimationPack implements PackResources {
 		if (packType != PackType.CLIENT_RESOURCES || !"textures".equals(path)) {
 			return;
 		}
-		for (Map.Entry<ResourceLocation, WorldSpriteAnimationSpec> entry : manager.worldSprites().entrySet()) {
-			ResourceLocation sprite = entry.getKey();
+		for (Map.Entry<Identifier, WorldSpriteAnimationSpec> entry : manager.worldSprites().entrySet()) {
+			Identifier sprite = entry.getKey();
 			if (!sprite.getNamespace().equals(namespace)) {
 				continue;
 			}
@@ -82,19 +83,20 @@ public final class VirtualAnimationPack implements PackResources {
 			return Set.of();
 		}
 		Set<String> namespaces = new HashSet<>();
-		for (ResourceLocation sprite : manager.worldSprites().keySet()) {
+		for (Identifier sprite : manager.worldSprites().keySet()) {
 			namespaces.add(sprite.getNamespace());
 		}
 		return namespaces;
 	}
 
 	@Override
-	public <T> T getMetadataSection(MetadataSectionSerializer<T> serializer) throws IOException {
-		if (serializer == PackMetadataSection.TYPE) {
+	public <T> T getMetadataSection(MetadataSectionType<T> serializer) throws IOException {
+		if (serializer == PackMetadataSection.CLIENT_TYPE) {
+			// 26.1 起元数据里的格式改为 InclusiveRange<PackFormat>（minorRange 覆盖当前版本的主/次版本）
 			return (T) new PackMetadataSection(
 				Component.translatable("anima.pack.title"),
-				SharedConstants.RESOURCE_PACK_FORMAT,
-				Optional.empty());
+				PackFormat.of(SharedConstants.RESOURCE_PACK_FORMAT_MAJOR,
+					SharedConstants.RESOURCE_PACK_FORMAT_MINOR).minorRange());
 		}
 		return null;
 	}
@@ -109,18 +111,18 @@ public final class VirtualAnimationPack implements PackResources {
 	}
 
 	/** {@code <ns>:<path>} → {@code <ns>:textures/<path>.png.mcmeta}. */
-	public static ResourceLocation animationMetaLocation(ResourceLocation sprite) {
-		return ResourceLocation.fromNamespaceAndPath(sprite.getNamespace(),
+	public static Identifier animationMetaLocation(Identifier sprite) {
+		return Identifier.fromNamespaceAndPath(sprite.getNamespace(),
 			"textures/" + sprite.getPath() + ".png.mcmeta");
 	}
 
 	/** {@code <ns>:textures/<path>.png.mcmeta} → {@code <ns>:<path>}, or {@code null}. */
-	public static ResourceLocation animationMetaToSprite(ResourceLocation meta) {
+	public static Identifier animationMetaToSprite(Identifier meta) {
 		String path = meta.getPath();
 		if (!path.startsWith("textures/") || !path.endsWith(".png.mcmeta")) {
 			return null;
 		}
 		String spritePath = path.substring("textures/".length(), path.length() - ".png.mcmeta".length());
-		return ResourceLocation.fromNamespaceAndPath(meta.getNamespace(), spritePath);
+		return Identifier.fromNamespaceAndPath(meta.getNamespace(), spritePath);
 	}
 }

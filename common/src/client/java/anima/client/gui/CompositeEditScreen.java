@@ -19,13 +19,15 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 
 import anima.client.world.WorldParticles;
@@ -346,7 +348,7 @@ public class CompositeEditScreen extends Screen {
 			int color = (alpha << 24) | (r << 16) | (gg << 8) | bb;
 			int px = x + (w - font.width(text)) / 2 + Math.round(m.tx);
 			int py = y + (h - 9) / 2 + Math.round(m.ty);
-			g.drawString(font, text, px, py, color);
+			g.text(font, text, px, py, color);
 		};
 	}
 
@@ -1123,7 +1125,7 @@ public class CompositeEditScreen extends Screen {
 	private static List<String> registryParticleIds() {
 		if (registryIds == null) {
 			List<String> ids = new ArrayList<>();
-			for (ResourceLocation rl : BuiltInRegistries.PARTICLE_TYPE.keySet()) {
+			for (Identifier rl : BuiltInRegistries.PARTICLE_TYPE.keySet()) {
 				ids.add(rl.toString());
 			}
 			ids.sort(Comparator.naturalOrder());
@@ -1969,7 +1971,7 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 在点击的动画条附近绘制已打开的上下文菜单（时间窗局部坐标）。 */
-	private void renderContextMenu(GuiGraphics g, int mouseX, int mouseY) {
+	private void renderContextMenu(GuiGraphicsExtractor g, int mouseX, int mouseY) {
 		if (ctxClip == null || laneOf(ctxClip) < 0) {
 			return;
 		}
@@ -1995,9 +1997,12 @@ public class CompositeEditScreen extends Screen {
 	// ------------------------------------------------------------------ 输入
 
 	@Override
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
 		// 控件（按钮 / 输入框 / 时间线长度框）总是优先接收点击
-		if (super.mouseClicked(mouseX, mouseY, button)) {
+		if (super.mouseClicked(event, bl)) {
 			return true;
 		}
 		// 没点到任何控件（点了时间线 / 空白 / 世界）→ 让输入框失焦。
@@ -2313,7 +2318,10 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	public boolean mouseReleased(MouseButtonEvent event) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
 		if (axisDrag >= 0) {
 			axisDrag = -1;
 			init(); // 用拖动后的值刷新属性输入框
@@ -2389,7 +2397,7 @@ public class CompositeEditScreen extends Screen {
 		if (wasScrubbing) {
 			playing = false;
 		}
-		return super.mouseReleased(mouseX, mouseY, button);
+		return super.mouseReleased(event);
 	}
 
 	/** 水平拖动动画条和/或拖到另一条轨道；水平位置会吸附，使同一条轨道上的
@@ -2461,7 +2469,10 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+	public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
 		// 同步轮询位置，使第一次轮询的增量为零，然后应用事件增量
 		pollX = mouseX;
 		pollY = mouseY;
@@ -2481,7 +2492,7 @@ public class CompositeEditScreen extends Screen {
 	 *  即使鼠标离开窗口或移动/释放事件丢失，拖动也能继续工作。 */
 	private void pollDrag() {
 		Minecraft mc = Minecraft.getInstance();
-		long win = mc.getWindow().getWindow();
+		long win = mc.getWindow().handle();
 		if (win == 0L) {
 			return;
 		}
@@ -2663,7 +2674,9 @@ public class CompositeEditScreen extends Screen {
 			panLastX = x;
 			return true;
 		}
-		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+		// 26.1：拖拽回退需要事件对象，这里按当前坐标/按键重建一个
+		return super.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY,
+			new net.minecraft.client.input.MouseButtonInfo(button, 0)), dragX, dragY);
 	}
 
 	@Override
@@ -2698,7 +2711,7 @@ public class CompositeEditScreen extends Screen {
 		mouseX = rawX - tlDx0;
 		mouseY = rawY - tlDy0;
 		// Ctrl + 滚轮悬停时间线 → 缩放
-		if (hasControlDown() && mouseX >= tlX() && mouseX <= tlX() + tlW() && mouseY >= timelineY() && mouseY <= timelineY() + TIMELINE_H) {
+		if (ctrlDown() && mouseX >= tlX() && mouseX <= tlX() + tlW() && mouseY >= timelineY() && mouseY <= timelineY() + TIMELINE_H) {
 			double factor = Math.signum(verticalAmount) > 0 ? 1.15 : 1 / 1.15;
 			// 以光标为中心缩放：保持光标下的世界时间不变（并做限制，
 			// 使左边缘自动对齐到 0，而不是溢出/回弹）。
@@ -2726,7 +2739,8 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	public boolean keyPressed(KeyEvent event) {
+		int keyCode = event.key();
 		if (cmdEditorOpen) {
 			// 模态弹窗：Enter 确认，ESC 取消（不得关闭整个编辑器）
 			if (keyCode == 257 || keyCode == 335) {
@@ -2737,13 +2751,13 @@ public class CompositeEditScreen extends Screen {
 				closeCommandEditor();
 				return true;
 			}
-			return super.keyPressed(keyCode, scanCode, modifiers);
+			return super.keyPressed(event);
 		}
-		if (worldPreviewActive && handleMovementKey(keyCode, true)) {
+		if (worldPreviewActive && handleMovementKey(event, true)) {
 			return true; // 在世界内编辑时 WASD / 跳跃 / 潜行 驱动观察者
 		}
 		// 播放 / 暂停按键（默认未指定，可在「按键控制」里绑定）；正在输入时不触发
-		if (!isTextFieldFocused() && EditorKeybinds.PLAY_PAUSE.matches(keyCode, scanCode)) {
+		if (!isTextFieldFocused() && EditorKeybinds.PLAY_PAUSE.matches(event)) {
 			playing = !playing;
 			return true;
 		}
@@ -2756,7 +2770,7 @@ public class CompositeEditScreen extends Screen {
 			init();
 			return true;
 		}
-		return super.keyPressed(keyCode, scanCode, modifiers);
+		return super.keyPressed(event);
 	}
 
 	/** 当我们的某个文本输入框持有键盘焦点时为 true —— 快捷键不得抢占其按键。
@@ -2774,27 +2788,27 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	@Override
-	public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-		if (worldPreviewActive && handleMovementKey(keyCode, false)) {
+	public boolean keyReleased(KeyEvent event) {
+		if (worldPreviewActive && handleMovementKey(event, false)) {
 			return true;
 		}
-		return super.keyReleased(keyCode, scanCode, modifiers);
+		return super.keyReleased(event);
 	}
 
 	/** 转发原版移动按键（WASD + 跳跃/潜行），使观察者可以移动。
 	 *  跳跃/潜行是升/降观察者的按键，因此必须保持转发 —— 之前的
 	 *  漂移实际上是由取整的鼠标增量造成的，而不是这些按键。 */
-	private boolean handleMovementKey(int keyCode, boolean down) {
+	private boolean handleMovementKey(KeyEvent event, boolean down) {
 		Minecraft mc = Minecraft.getInstance();
 		net.minecraft.client.KeyMapping[] keys = {
 			mc.options.keyUp, mc.options.keyDown, mc.options.keyLeft, mc.options.keyRight,
 			mc.options.keyJump, mc.options.keyShift
 		};
 		for (net.minecraft.client.KeyMapping km : keys) {
-			if (km.matches(keyCode, 0)) {
+			if (km.matches(event)) {
 				km.setDown(down);
 				if (down) {
-					heldMoveKeys.put(km, keyCode);
+					heldMoveKeys.put(km, event.key());
 				} else {
 					heldMoveKeys.remove(km);
 				}
@@ -2802,6 +2816,13 @@ public class CompositeEditScreen extends Screen {
 			}
 		}
 		return false;
+	}
+
+	/** 26.1：{@code Screen.hasControlDown()} 已移除，改为直接查询按键状态。 */
+	private static boolean ctrlDown() {
+		com.mojang.blaze3d.platform.Window win = Minecraft.getInstance().getWindow();
+		return com.mojang.blaze3d.platform.InputConstants.isKeyDown(win, GLFW.GLFW_KEY_LEFT_CONTROL)
+			|| com.mojang.blaze3d.platform.InputConstants.isKeyDown(win, GLFW.GLFW_KEY_RIGHT_CONTROL);
 	}
 
 	/** 释放我们转发的所有移动按键（界面关闭时使用）。 */
@@ -2849,7 +2870,7 @@ public class CompositeEditScreen extends Screen {
 	 */
 	private void sanitizeInputState() {
 		Minecraft mc = Minecraft.getInstance();
-		long win = mc.getWindow().getWindow();
+		long win = mc.getWindow().handle();
 		if (win == 0L) {
 			return;
 		}
@@ -2919,12 +2940,12 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	@Override
-	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		// 留空：不绘制原版的模糊层
 	}
 
 	@Override
-	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		long now = System.currentTimeMillis();
 		if (lastFrameMs < 0) {
 			lastFrameMs = now;
@@ -2961,32 +2982,32 @@ public class CompositeEditScreen extends Screen {
 		renderCenter(g);
 
 		// 三个相互独立的浮窗，各自按自身的拖动偏移平移
-		g.pose().pushPose();
-		g.pose().translate(palDx, palDy, 0);
+		g.pose().pushMatrix();
+		g.pose().translate(palDx, palDy);
 		renderPalette(g, lmx - palDx, lmy - palDy);
 		drawWindowHandle(g, 1, 4, paletteY0() - HANDLE_H, listW() - 4, L10n.tr("anima.ui.title.palette"), 4);
-		g.pose().popPose();
+		g.pose().popMatrix();
 
-		g.pose().pushPose();
-		g.pose().translate(propDx, propDy, 0);
+		g.pose().pushMatrix();
+		g.pose().translate(propDx, propDy);
 		renderProperty(g);
 		// 标题栏横跨面板整个宽度（包括两侧 2px 的间隙），因此顶部
 		// 边缘不再显得比其后的面板短；其文字保持与面板窗口
 		// 标题相同的缩进
 		drawWindowHandle(g, 2, propX() - 2, TOP_H + 2, PROP_PANEL_W, propLabel(), PROP_INSET);
-		g.pose().popPose();
+		g.pose().popMatrix();
 
-		g.pose().pushPose();
-		g.pose().translate(tlDx0, tlDy0, 0);
+		g.pose().pushMatrix();
+		g.pose().translate(tlDx0, tlDy0);
 		renderTimeline(g, lmx, lmy);
-		g.pose().popPose();
+		g.pose().popMatrix();
 
 		// /particle 弹窗背景绘制在控件之下（其输入框/按钮都是控件，
 		// 因此必须在此之后绘制），其边框会在下面重新绘制到顶层
 		renderCommandEditorBackground(g);
 
 		// 控件在 init() 中按相同的窗口偏移定位，因此它们能对齐
-		super.render(g, lmx, lmy, partialTick);
+		super.extractRenderState(g, lmx, lmy, partialTick);
 
 		// 右键下拉菜单绘制在窗口之上（如同原生的上下文菜单）
 		renderContextMenu(g, mouseX, mouseY);
@@ -2995,7 +3016,7 @@ public class CompositeEditScreen extends Screen {
 
 		// 临时状态行（保存/导入粒子组）
 		if (!notice.isEmpty() && now < noticeUntil) {
-			g.drawString(this.font, notice, 6, 6, GuiTheme.DE_GREEN);
+			g.text(this.font, notice, 6, 6, GuiTheme.DE_GREEN);
 		}
 
 		// 投影出来的坐标系画在最上层，任何窗口都盖不住它
@@ -3011,11 +3032,11 @@ public class CompositeEditScreen extends Screen {
 
 	/** 绘制某个浮窗的小拖动条（区域：1 面板，2 属性，3 时间线）。 */
 	/** 窗口标题栏：比小字段标题大一号的文字，紧贴文字。 */
-	private void drawWindowHandle(GuiGraphics g, int region, int x, int y, int w, String label, int labelInset) {
+	private void drawWindowHandle(GuiGraphicsExtractor g, int region, int x, int y, int w, String label, int labelInset) {
 		g.fill(x, y, x + w, y + HANDLE_H, handleBg());
 		g.fill(x, y, x + w, y + 1, GuiTheme.ACCENT);
 		if (!label.isEmpty()) {
-			g.drawString(this.font, label, x + labelInset, y + 2, GuiTheme.SUBTEXT, false);
+			g.text(this.font, label, x + labelInset, y + 2, GuiTheme.SUBTEXT, false);
 		}
 	}
 
@@ -3066,7 +3087,7 @@ public class CompositeEditScreen extends Screen {
 		return lx >= 4 && lx <= tlX() - 2 && ly >= timelineY() && ly <= timelineY() + TIMELINE_H;
 	}
 
-	private void drawControlButtons(GuiGraphics g, int mouseX, int mouseY) {
+	private void drawControlButtons(GuiGraphicsExtractor g, int mouseX, int mouseY) {
 		int w = ctrlW();
 		int lmx = mouseX - tlDx0;
 		int lmy = mouseY - tlDy0;
@@ -3078,7 +3099,7 @@ public class CompositeEditScreen extends Screen {
 			g.fill(6, by, 6 + w, by + CTRL_BTN_H, border);
 			g.fill(7, by + 1, 5 + w, by + CTRL_BTN_H - 1, bg);
 			String label = ctrlLabel(i, playing);
-			g.drawString(this.font, label, 6 + (w - this.font.width(label)) / 2, by + 4,
+			g.text(this.font, label, 6 + (w - this.font.width(label)) / 2, by + 4,
 				over ? GuiTheme.TEXT : GuiTheme.SUBTEXT);
 		}
 	}
@@ -3456,17 +3477,17 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 用于每个字段标题的小号（0.75×）标签，使标题紧贴其输入框。 */
-	private void drawSmallLabel(GuiGraphics g, String text, int x, int y, int color) {
-		g.pose().pushPose();
-		g.pose().translate(x, y, 0f);
-		g.pose().scale(0.75f, 0.75f, 1f);
-		g.drawString(this.font, text, 0, 0, color, false);
-		g.pose().popPose();
+	private void drawSmallLabel(GuiGraphicsExtractor g, String text, int x, int y, int color) {
+		g.pose().pushMatrix();
+		g.pose().translate(x, y);
+		g.pose().scale(0.75f, 0.75f);
+		g.text(this.font, text, 0, 0, color, false);
+		g.pose().popMatrix();
 	}
 
 	/** 当前选择所拥有属性行的标签（小号，位于输入框上方，左对齐）。
 	 *  选中粒子时显示的行是该粒子自身的 偏移X/Y/Z。 */
-	private void renderPropLabels(GuiGraphics g, int px) {
+	private void renderPropLabels(GuiGraphicsExtractor g, int px) {
 		int rows = propShownRows();
 		for (int i = 0; i < PROP_COUNT && i < rows; i++) {
 			drawSmallLabel(g, propRowLabel(i), px + PROP_INSET, propRowY(i) - propLabelLift(i),
@@ -3548,7 +3569,7 @@ public class CompositeEditScreen extends Screen {
 	private int pmRowsY() { return pmListY() + PICKER_SEARCH_H + 3; }
 
 	/** 绘制已展开的选择器：顶部为搜索栏，然后是已保存分组和注册表粒子。 */
-	private void renderParticlePicker(GuiGraphics g) {
+	private void renderParticlePicker(GuiGraphicsExtractor g) {
 		if (!particleListOpen || selectedClip == null || !isParticleSelected()) {
 			return;
 		}
@@ -3572,7 +3593,7 @@ public class CompositeEditScreen extends Screen {
 			boolean sel = !e.isGroup() && e.id().equals(cur);
 			g.fill(lx + 1, ry, lx + lw - 1, ry + pmRowH() - 1, sel ? GuiTheme.ACCENT_DARK : GuiTheme.PANEL);
 			String label = e.isGroup() ? L10n.tr("anima.ui.picker.group_prefix") + e.label() : e.label();
-			g.drawString(this.font, font.plainSubstrByWidth(label, lw - 8), lx + 4, ry + 1,
+			g.text(this.font, font.plainSubstrByWidth(label, lw - 8), lx + 4, ry + 1,
 				e.isGroup() ? GuiTheme.DE_GREEN : (sel ? 0xFFFFFFFF : GuiTheme.TEXT));
 		}
 	}
@@ -3644,14 +3665,14 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 弹窗背景（在控件之前绘制，使输入框/按钮位于其上方）。 */
-	private void renderCommandEditorBackground(GuiGraphics g) {
+	private void renderCommandEditorBackground(GuiGraphicsExtractor g) {
 		if (!cmdEditorOpen) {
 			return;
 		}
 		g.fill(cmdX() - 4, cmdY() - 4, cmdX() + cmdW() + 4, cmdY() + CMD_H + 4, 0xFF14171C);
 	}
 
-	private void renderCommandEditor(GuiGraphics g) {
+	private void renderCommandEditor(GuiGraphicsExtractor g) {
 		if (!cmdEditorOpen) {
 			return;
 		}
@@ -3659,7 +3680,7 @@ public class CompositeEditScreen extends Screen {
 		int y = cmdY();
 		int w = cmdW();
 		g.fill(x - 4, y - 4, x + w + 4, y - 3, GuiTheme.ACCENT);
-		g.drawString(this.font, L10n.tr("anima.ui.button.import_command"), x + 8, y + 8, GuiTheme.ACCENT);
+		g.text(this.font, L10n.tr("anima.ui.button.import_command"), x + 8, y + 8, GuiTheme.ACCENT);
 		drawSmallLabel(g, L10n.tr("anima.ui.cmd.example"), x + 8, y + 42,
 			GuiTheme.SUBTEXT);
 	}
@@ -3739,7 +3760,7 @@ public class CompositeEditScreen extends Screen {
 		float scale = TEXT_WORLD_SCALE * Math.max(0.01f, osc);
 		if (!textDistanceScale) {
 			// 距离缩放关闭：按距离补偿世界尺寸，使屏幕上的大小保持不变
-			double dist = camera.getPosition().distanceTo(new net.minecraft.world.phys.Vec3(objectX(), objectY(), objectZ()));
+			double dist = camera.position().distanceTo(new net.minecraft.world.phys.Vec3(objectX(), objectY(), objectZ()));
 			scale *= (float) Math.max(0.05, dist / DIST_SCALE_REF) * DIST_SCALE_OFF_BOOST;
 		}
 		WorldText3D.draw(buffers, camera, text, objectX(), objectY(), objectZ(), color,
@@ -3774,7 +3795,7 @@ public class CompositeEditScreen extends Screen {
 	 * 都能得到平滑边缘。轴的位置仍来自世界坐标投影（{@link #axisTip}），所以轴会随目标在世界里的
 	 * 位置变化，但线条本身画在 2D 层、屏幕朝向固定。
 	 */
-	private void drawGizmo(GuiGraphics g) {
+	private void drawGizmo(GuiGraphicsExtractor g) {
 		if (!gizmoVisible()) {
 			return;
 		}
@@ -3784,8 +3805,8 @@ public class CompositeEditScreen extends Screen {
 		}
 		Minecraft mc = Minecraft.getInstance();
 		int scale = Math.max(1, (int) Math.round(mc.getWindow().getGuiScale()));
-		g.pose().pushPose();
-		g.pose().scale(1f / scale, 1f / scale, 1f); // 从这里开始 1 单位 = 1 物理像素
+		g.pose().pushMatrix();
+		g.pose().scale(1f / scale, 1f / scale); // 从这里开始 1 单位 = 1 物理像素
 		float ox = o[0] * scale;
 		float oy = o[1] * scale;
 		// 固定的世界原点（偏移量相对它计算）——一个不会移动的柔和光点
@@ -3813,7 +3834,7 @@ public class CompositeEditScreen extends Screen {
 		// （这里刻意不画散布圆环——在屏幕上容易被误认成一个多余的圆圈。）
 		drawDiscAA(g, ox, oy, 3.6f * scale, withAlpha(0xFFFFFFFF, 0.16f));
 		drawDiscAA(g, ox, oy, 1.6f * scale, 0xFFFFFFFF);
-		g.pose().popPose();
+		g.pose().popMatrix();
 
 		// 轴端字母留在 GUI 空间，这样它们保持正常字号
 		for (int a = 0; a < 3; a++) {
@@ -3962,7 +3983,7 @@ public class CompositeEditScreen extends Screen {
 
 	/** 通过对线条矩形做扫描线覆盖率实现的抗锯齿线段 —— 没有逐像素循环，
 	 *  因此即使在 guiScale 4 下开销也很低（每条扫描线只有少数几个四边形）。 */
-	private static void drawLineAA(GuiGraphics g, float x0, float y0, float x1, float y1, int color, float width) {
+	private static void drawLineAA(GuiGraphicsExtractor g, float x0, float y0, float x1, float y1, int color, float width) {
 		float dx = x1 - x0;
 		float dy = y1 - y0;
 		float len = (float) Math.sqrt(dx * dx + dy * dy);
@@ -4047,7 +4068,7 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 抗锯齿的实心圆盘，同样基于扫描线（每行一个四边形）。 */
-	private static void drawDiscAA(GuiGraphics g, float cx, float cy, float r, int color) {
+	private static void drawDiscAA(GuiGraphicsExtractor g, float cx, float cy, float r, int color) {
 		if (r <= 0.2f) {
 			return;
 		}
@@ -4140,7 +4161,7 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 逐字符绘制文本，每个字符都有自己的偏移/缩放/旋转/透明度。 */
-	private void drawChars(GuiGraphics g, Font font, String text, float centreX, float y, int color,
+	private void drawChars(GuiGraphicsExtractor g, Font font, String text, float centreX, float y, int color,
 			WorldText3D.Glyph[] ts, float scale) {
 		float totalW = font.width(text) * scale;
 		float x = centreX - totalW / 2f;
@@ -4153,15 +4174,15 @@ public class CompositeEditScreen extends Screen {
 			if (t.alpha > 0.02f) {
 				float s = scale * t.scale;
 				int a = Math.round(baseA * clamp01(t.alpha));
-				g.pose().pushPose();
+				g.pose().pushMatrix();
 				// (x + cw/2, y + 4) 是字形的中心 → 缩放和旋转围绕它进行
-				g.pose().translate(x + cw / 2f + t.dx, y + 4f + t.dy, 0f);
-				g.pose().scale(s, s, 1f);
+				g.pose().translate(x + cw / 2f + t.dx, y + 4f + t.dy);
+				g.pose().scale(s, s);
 				if (t.rot != 0f) {
-					g.pose().mulPose(new org.joml.Quaternionf().rotateZ(t.rot));
+					g.pose().rotate(t.rot);
 				}
-				g.drawString(font, ch, -font.width(ch) / 2, -4, (a << 24) | rgb, false);
-				g.pose().popPose();
+				g.text(font, ch, -font.width(ch) / 2, -4, (a << 24) | rgb, false);
+				g.pose().popMatrix();
 			}
 			x += cw;
 		}
@@ -4296,13 +4317,13 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 直接绘制在背景上的单行操作提示，紧贴最左侧（无边框）。 */
-	private void renderGuide(GuiGraphics g) {
+	private void renderGuide(GuiGraphicsExtractor g) {
 		int gy = (int) (timelineY() - 14);
-		g.drawString(this.font, L10n.tr("anima.ui.guide.timeline"),
+		g.text(this.font, L10n.tr("anima.ui.guide.timeline"),
 			4, gy, GuiTheme.SUBTEXT);
 	}
 
-	private void renderPalette(GuiGraphics g, int mouseX, int mouseY) {
+	private void renderPalette(GuiGraphicsExtractor g, int mouseX, int mouseY) {
 		int y0 = paletteY0();
 		int h = paletteH();
 		// 窗口背景与属性窗口从同一顶线开始（其标题栏
@@ -4328,13 +4349,13 @@ public class CompositeEditScreen extends Screen {
 				if (over) {
 					g.fill(6, y + 1, listW() - 2, y + 19, 0x803C3C3C);
 				}
-				g.drawString(this.font, PRESET_MARK + p.name(), 8, y + 5, over ? GuiTheme.WARN : GuiTheme.TEXT);
+				g.text(this.font, PRESET_MARK + p.name(), 8, y + 5, over ? GuiTheme.WARN : GuiTheme.TEXT);
 			} else if (o instanceof PaletteGroup pg) {
 				// 已保存的粒子组 JSON → 点击将其添加到时间线
 				if (over) {
 					g.fill(6, y + 1, listW() - 2, y + 19, 0x803C3C3C);
 				}
-				g.drawString(this.font, font.plainSubstrByWidth("≡ " + pg.name(), listW() - 12), 8, y + 5,
+				g.text(this.font, font.plainSubstrByWidth("≡ " + pg.name(), listW() - 12), 8, y + 5,
 					over ? GuiTheme.WARN : GuiTheme.DE_GREEN);
 			} else { // 分组标题 → 折叠切换：展开时为 "- " / 折叠时为 "+ "
 				String cat = (String) o;
@@ -4342,7 +4363,7 @@ public class CompositeEditScreen extends Screen {
 				if (over) {
 					g.fill(6, y + 1, listW() - 2, y + 19, 0x803C3C3C);
 				}
-				g.drawString(this.font, (open ? "- " : "+ ") + cat, 8, y + 5, GuiTheme.ACCENT);
+				g.text(this.font, (open ? "- " : "+ ") + cat, 8, y + 5, GuiTheme.ACCENT);
 			}
 		}
 		// 拖动残影跟随光标
@@ -4351,7 +4372,7 @@ public class CompositeEditScreen extends Screen {
 			if (p != null) {
 				int gx = mouseX + 8, gy = mouseY + 2;
 				g.fill(gx - 2, gy - 2, gx + this.font.width(p.name()) + 6, gy + 10, GuiTheme.PANEL);
-				g.drawString(this.font, p.name(), gx, gy, GuiTheme.WARN);
+				g.text(this.font, p.name(), gx, gy, GuiTheme.WARN);
 			}
 		}
 
@@ -4361,11 +4382,11 @@ public class CompositeEditScreen extends Screen {
 			int my = addMenuY;
 			g.fill(mx, my, mx + 92, my + 20, 0xE6121418);
 			g.fill(mx, my, mx + 92, my + 1, GuiTheme.ACCENT);
-			g.drawString(this.font, L10n.tr("anima.ui.effect.custom_particle"), mx + 6, my + 6, GuiTheme.TEXT);
+			g.text(this.font, L10n.tr("anima.ui.effect.custom_particle"), mx + 6, my + 6, GuiTheme.TEXT);
 		}
 	}
 
-	private void renderCenter(GuiGraphics g) {
+	private void renderCenter(GuiGraphicsExtractor g) {
 		int cx = centerX();
 		int cy = centerY();
 		int cw = centerW();
@@ -4457,7 +4478,7 @@ public class CompositeEditScreen extends Screen {
 		return Math.max(0f, Math.min(1f, v));
 	}
 
-	private void renderProperty(GuiGraphics g) {
+	private void renderProperty(GuiGraphicsExtractor g) {
 		int px = propX();
 		int lx = px + PROP_INSET; // 标题/数值保持与面板文字相同的左缩进
 		int right = propRight();
@@ -4501,12 +4522,12 @@ public class CompositeEditScreen extends Screen {
 					g.fill(lx, particleY() + 1, fieldR, particleY() + 15, 0x602E2E2E);
 					String head = L10n.tr("anima.ui.particle.group_summary", n,
 						isGroupExpanded(c) ? L10n.tr("anima.ui.suffix.expanded") : L10n.tr("anima.ui.suffix.collapsed"));
-					g.drawString(this.font, font.plainSubstrByWidth(head, fieldR - lx - 14), lx + 1, particleY() + 5, GuiTheme.ACCENT);
+					g.text(this.font, font.plainSubstrByWidth(head, fieldR - lx - 14), lx + 1, particleY() + 5, GuiTheme.ACCENT);
 					drawSmallLabel(g, L10n.tr("anima.ui.prop.particle_group"), lx, particleY() - 6, GuiTheme.SUBTEXT);
 				} else if (isParticleSelected()) {
 					g.fill(lx, particleY() + 1, fieldR, particleY() + 15, 0x602E2E2E);
-					g.drawString(this.font, font.plainSubstrByWidth(resolveParticle(c), fieldR - lx - 14), lx + 1, particleY() + 5, GuiTheme.ACCENT);
-					g.drawString(this.font, particleListOpen ? "▴" : "▾", fieldR - 9, particleY() + 5, GuiTheme.TEXT);
+					g.text(this.font, font.plainSubstrByWidth(resolveParticle(c), fieldR - lx - 14), lx + 1, particleY() + 5, GuiTheme.ACCENT);
+					g.text(this.font, particleListOpen ? "▴" : "▾", fieldR - 9, particleY() + 5, GuiTheme.TEXT);
 					drawSmallLabel(g, L10n.tr("anima.ui.prop.particle_id"), lx, particleY() - 6, GuiTheme.SUBTEXT);
 					if (isParticle3D()) {
 						String[] labels = { L10n.tr("anima.ui.prop.count"), L10n.tr("anima.ui.prop.spread_x"), L10n.tr("anima.ui.prop.spread_y"), L10n.tr("anima.ui.prop.spread_z"), L10n.tr("anima.ui.prop.speed") };
@@ -4529,7 +4550,7 @@ public class CompositeEditScreen extends Screen {
 		}
 	}
 
-	private void renderTimeline(GuiGraphics g, int mouseX, int mouseY) {
+	private void renderTimeline(GuiGraphicsExtractor g, int mouseX, int mouseY) {
 		int ty = timelineY();
 		int tx = tlX();
 		int tw = tlW();
@@ -4599,10 +4620,10 @@ public class CompositeEditScreen extends Screen {
 						// 色块上的裸 -/+ 字形（无背景框）：点击它折叠/展开
 						boolean open = isGroupExpanded(c);
 						int tx0 = x0 + GROUP_TOGGLE_X;
-						g.drawString(this.font, open ? "-" : "+", tx0 + 3, y + 3, GuiTheme.DE_GREEN);
+						g.text(this.font, open ? "-" : "+", tx0 + 3, y + 3, GuiTheme.DE_GREEN);
 						labelX = tx0 + GROUP_TOGGLE_W + 3;
 					}
-					g.drawString(this.font, font.plainSubstrByWidth(c.displayName(), Math.max(12, x1 - labelX) - 2),
+					g.text(this.font, font.plainSubstrByWidth(c.displayName(), Math.max(12, x1 - labelX) - 2),
 						labelX, y + 2, GuiTheme.TEXT);
 				}
 			}
@@ -4617,10 +4638,10 @@ public class CompositeEditScreen extends Screen {
 		int maxLaneScroll = Math.max(0, lanesContentH() - lanesViewH());
 		if (maxLaneScroll > 0) {
 			if (laneScrollPx > 0) {
-				g.drawString(this.font, "▲", tlX() + tlW() - 16, ty - 12, GuiTheme.SUBTEXT);
+				g.text(this.font, "▲", tlX() + tlW() - 16, ty - 12, GuiTheme.SUBTEXT);
 			}
 			if (laneScrollPx < maxLaneScroll) {
-				g.drawString(this.font, "▼", tlX() + tlW() - 16, ty + TIMELINE_H - 16, GuiTheme.SUBTEXT);
+				g.text(this.font, "▼", tlX() + tlW() - 16, ty + TIMELINE_H - 16, GuiTheme.SUBTEXT);
 			}
 		}
 
@@ -4631,7 +4652,7 @@ public class CompositeEditScreen extends Screen {
 		if (ttx1 > ttx0) {
 			boolean selected = selectedClip == null; // 没有选中动画条时，文本对象即为“选中”状态
 			g.fill(ttx0, tty, ttx1, tty + 12, selected ? 0xFF3A4351 : 0xFF343434);
-			g.drawString(this.font, L10n.tr("anima.ui.type.text"), ttx0 + 2, tty + 2, GuiTheme.TEXT);
+			g.text(this.font, L10n.tr("anima.ui.type.text"), ttx0 + 2, tty + 2, GuiTheme.TEXT);
 			for (int i = 0; i < textKeys.size(); i++) {
 				int kx = tlXFor(textKeys.get(i).timeMs);
 				if (kx < ttx0 || kx > ttx1) {
@@ -4659,7 +4680,7 @@ public class CompositeEditScreen extends Screen {
 
 	/** 绘制每个已展开分组的子粒子行，位于时间线其余部分之上。
 	 *  每个子项条都从分组色块的左边缘开始，使列表看起来像一棵嵌套树。 */
-	private void renderGroupChildren(GuiGraphics g, int tx, int tw, int viewTop, int viewBottom) {
+	private void renderGroupChildren(GuiGraphicsExtractor g, int tx, int tw, int viewTop, int viewBottom) {
 		for (int li = 0; li < lanes.size(); li++) {
 			int y = laneTopOf(li);
 			if (y > viewBottom || y + laneTotalH(li) < viewTop) {
@@ -4686,7 +4707,7 @@ public class CompositeEditScreen extends Screen {
 						g.fill(cx1 - 1, ry0, cx1, ry1, GuiTheme.DE_GREEN);
 						if (cy >= viewTop && cy + CHILD_H <= viewBottom) {
 							String lbl = (k + 1) + ". " + groupItemId(c, k) + " ×" + groupItemCount(c, k);
-							g.drawString(this.font, font.plainSubstrByWidth(lbl, Math.max(12, cx1 - cx0) - 4),
+							g.text(this.font, font.plainSubstrByWidth(lbl, Math.max(12, cx1 - cx0) - 4),
 								cx0 + 3, cy, selChild ? 0xFFFFFFFF : GuiTheme.SUBTEXT);
 						}
 					}
@@ -4697,7 +4718,7 @@ public class CompositeEditScreen extends Screen {
 	}
 
 	/** 与 ◆ 关键帧按钮字形一致的小实心菱形。 */
-	private static void drawDiamond(GuiGraphics g, int cx, int cy, int r, int color) {
+	private static void drawDiamond(GuiGraphicsExtractor g, int cx, int cy, int r, int color) {
 		for (int dy = -r; dy <= r; dy++) {
 			int w = r - Math.abs(dy);
 			g.fill(cx - w, cy + dy, cx + w + 1, cy + dy + 1, color);

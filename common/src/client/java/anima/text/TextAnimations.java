@@ -4,11 +4,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import anima.engine.AnimationEngine;
 import anima.engine.RenderModifier;
@@ -16,7 +17,7 @@ import anima.engine.RenderModifier;
 /**
  * Public API for text animation.
  * <ul>
- *   <li><b>Explicit helper</b>: {@link #draw(GuiGraphics, Font, Component, int, int, int, TextAnimationSpec)} — the
+ *   <li><b>Explicit helper</b>: {@link #draw(GuiGraphicsExtractor, Font, Component, int, int, int, TextAnimationSpec)} — the
  *       caller controls timing, suitable for HUD / damage numbers.</li>
  *   <li><b>Tag-based auto mode</b>: {@link #withTag(Component, String)} or {@link #parse(String)} mark a component with
  *       a {@code anima:textanim/<tag>} style; the Font mixin animates it wherever it is drawn
@@ -35,7 +36,7 @@ public final class TextAnimations {
 
 	/** Marks a component so the Font mixin animates it with the given tag. */
 	public static MutableComponent withTag(Component component, String tag) {
-		ResourceLocation marker = AnimatedTextStyle.markerFor(tag);
+		FontDescription marker = AnimatedTextStyle.markerFor(tag);
 		return component.copy().withStyle(style -> style.withFont(marker));
 	}
 
@@ -62,18 +63,18 @@ public final class TextAnimations {
 	// ------------------------------------------------------------------ explicit helper
 
 	/** Draws {@code text} with the animation spec applied (alpha + rgb + translate + scale). */
-	public static int draw(GuiGraphics guiGraphics, Font font, String text, int x, int y, int color, TextAnimationSpec spec) {
+	public static int draw(GuiGraphicsExtractor guiGraphics, Font font, String text, int x, int y, int color, TextAnimationSpec spec) {
 		return draw(guiGraphics, font, Component.literal(text), x, y, color, spec);
 	}
 
 	/** Draws {@code component} with the animation spec applied. */
-	public static int draw(GuiGraphics guiGraphics, Font font, Component component, int x, int y, int color, TextAnimationSpec spec) {
+	public static int draw(GuiGraphicsExtractor guiGraphics, Font font, Component component, int x, int y, int color, TextAnimationSpec spec) {
 		return draw(guiGraphics, font, component, x, y, color, spec, AnimationEngine.get().globalTimeMs());
 	}
 
 	/** Draws {@code component} with the animation spec evaluated at a caller-provided time (ms).
 	 *  Use this for effects with their own local clock (e.g. per-hit floating damage numbers). */
-	public static int draw(GuiGraphics guiGraphics, Font font, Component component, int x, int y, int color,
+	public static int draw(GuiGraphicsExtractor guiGraphics, Font font, Component component, int x, int y, int color,
 			TextAnimationSpec spec, float localMs) {
 		return draw(guiGraphics, font, component, x, y, color, spec, localMs, 0f);
 	}
@@ -85,16 +86,18 @@ public final class TextAnimations {
 	 * {@code x/y} screen position plus the modifier's own translate are the "xyz offset" hooks
 	 * for code-controlled displacement.
 	 */
-	public static int draw(GuiGraphics guiGraphics, Font font, Component component, int x, int y, int color,
+	public static int draw(GuiGraphicsExtractor guiGraphics, Font font, Component component, int x, int y, int color,
 			TextAnimationSpec spec, float localMs, float durationMs) {
 		RenderModifier modifier = spec.computeModifier(localMs, durationMs);
 		int finalColor = applyModifierColor(color, modifier);
 
-		guiGraphics.pose().pushPose();
-		guiGraphics.pose().translate(modifier.tx, modifier.ty, 0f);
-		guiGraphics.pose().scale(modifier.sx, modifier.sy, 1f);
-		int result = guiGraphics.drawString(font, component, x, y, finalColor);
-		guiGraphics.pose().popPose();
+		guiGraphics.pose().pushMatrix();
+		guiGraphics.pose().translate(modifier.tx, modifier.ty);
+		guiGraphics.pose().scale(modifier.sx, modifier.sy);
+		// 26.1 的 text(...) 不返回绘制后的 x 坐标，自行按字宽推算
+		int result = x + font.width(component);
+		guiGraphics.text(font, component, x, y, finalColor);
+		guiGraphics.pose().popMatrix();
 		return result;
 	}
 
@@ -130,7 +133,7 @@ public final class TextAnimations {
 
 	private static Style restoreStyle(Style style) {
 		if (AnimatedTextStyle.tagFromMarker(style.getFont()) != null) {
-			return style.withFont(Style.DEFAULT_FONT);
+			return style.withFont(FontDescription.DEFAULT);
 		}
 		return style;
 	}
