@@ -18,7 +18,7 @@ Text:
 
 - Presets for typewriter in, per-character fall, random fall, drift in and fade out
 - Two layers: HUD text and in-world 3D text. 3D text has real perspective and is occluded by blocks, and each character can be offset, scaled, rotated and faded independently
-- Drop shadow works on both layers: HUD text uses the vanilla font shadow, 3D text draws its own, and the shadow is depth-tested so entities and blocks in front occlude it correctly
+- Drop shadow works on both layers: HUD text uses the vanilla font shadow, and 3D text draws its own in the same see-through pass as the glyphs, so the shadow stays with the text instead of getting cut off by a block the text itself shows through
 
 Particles:
 
@@ -286,7 +286,7 @@ Anima 是 Minecraft 26.1 的客户端动画库（1.21.1 见 `1.21` 分支），�
 
 - 预设了打字机出场、逐字下落、随机下落、飘入、淡出等编排效果
 - 分 HUD 文字和世界内 3D 文字两层。3D 文字有真实透视、会被方块遮挡，每个字可以单独控制位移、缩放、旋转、透明度
-- 两层文字都带投影：HUD 文字用原版字体的阴影，3D 文字自己绘制一遍；阴影同样参与深度测试，挡在前面的实体和方块会正确遮住它
+- 两层文字都带投影：HUD 文字用原版字体的阴影，3D 文字自己绘制一遍；阴影和正文走同一条穿透通道，文字穿墙可见时阴影也会一起显示，不会被方块单独切掉
 
 粒子：
 
