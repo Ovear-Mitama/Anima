@@ -199,11 +199,14 @@ public final class WorldText3D {
 				}
 				int col = (Math.round(baseA * a) << 24) | rgb;
 				if (mode == Font.DisplayMode.SEE_THROUGH) {
-					// 穿透通道：阴影单独画、且参与深度测试（POLYGON_OFFSET）→ 被挡在文字前的实体正确遮挡；
-					// 正文保持 see-through 无深度测试 → 永远可见。阴影与正文不同缓冲、正文后刷 → 压在阴影上。
+					// 穿透通道：阴影与正文用同一个渲染类型（都不做深度测试）。
+					// 阴影若参与深度测试，文字穿墙可见时阴影会被前面的方块/实体吃掉，
+					// 看起来就是"跳字在墙后没了阴影"；两者同为 see-through 才能始终成对出现。
+					// 阴影先提交、正文后提交，在同一缓冲里顺序有保证 → 正文稳定压在阴影之上；
+					// 1px 平面偏移 + 零 Z 位移保证两者共面，不会 z-fighting。
 					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, shadowColor(col), false,
 						new Matrix4f(m).translate(SHADOW_OFFSET, SHADOW_OFFSET, 0f), buffers,
-						Font.DisplayMode.POLYGON_OFFSET, 0, LightTexture.FULL_BRIGHT);
+						Font.DisplayMode.SEE_THROUGH, 0, LightTexture.FULL_BRIGHT);
 					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
 						mode, 0, LightTexture.FULL_BRIGHT);
 				} else {
