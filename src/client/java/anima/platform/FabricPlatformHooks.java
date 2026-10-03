@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -29,8 +30,11 @@ public class FabricPlatformHooks extends PlatformHooks {
 		if (!worldEventRegistered) {
 			worldEventRegistered = true;
 			WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+				// 传游戏帧插值（tick 间 0..1）：否则回调里 getPosition(pt) 拿的是每 tick 的
+				// 未插值位置，跟踪实体跳跃字会一卡一卡（20tps 步进）。
+				float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
 				for (WorldRenderHook h : worldHooks) {
-					h.render(context.matrixStack(), context.consumers(), context.camera(), 0f);
+					h.render(context.matrixStack(), context.consumers(), context.camera(), partialTick);
 				}
 			});
 		}
