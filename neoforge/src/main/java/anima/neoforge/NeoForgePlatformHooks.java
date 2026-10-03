@@ -56,8 +56,11 @@ public class NeoForgePlatformHooks extends PlatformHooks {
 		Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
 		PoseStack pose = event.getPoseStack();
 		MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+		// 传游戏帧插值（tick 间 0..1）：否则回调里 getPosition(pt) 拿的是每 tick 的未插值位置，
+		// 跟踪实体跳跃字会一卡一卡（20tps 步进）。
+		float partialTick = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
 		for (WorldRenderHook hook : worldHooks) {
-			hook.render(pose, buffers, camera, 0f);
+			hook.render(pose, buffers, camera, partialTick);
 		}
 		buffers.endBatch();
 	}

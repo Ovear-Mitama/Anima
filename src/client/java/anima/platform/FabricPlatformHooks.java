@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -30,8 +31,11 @@ public class FabricPlatformHooks extends PlatformHooks {
 			// 26.1：WorldRenderEvents 更名为 LevelRenderEvents，相机 / 缓冲改由上下文提供
 			LevelRenderEvents.AFTER_TRANSLUCENT_FEATURES.register(context -> {
 				Camera camera = context.gameRenderer().getMainCamera();
+				// 传游戏帧插值（tick 间 0..1）：否则回调里 getPosition(pt) 拿的是每 tick 的
+				// 未插值位置，跟踪实体跳跃字会一卡一卡（20tps 步进）。
+				float partialTick = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
 				for (WorldRenderHook h : worldHooks) {
-					h.render(context.poseStack(), context.bufferSource(), camera, 0f);
+					h.render(context.poseStack(), context.bufferSource(), camera, partialTick);
 				}
 			});
 		}

@@ -39,12 +39,6 @@ public final class WorldText3D {
 	/** 一个小小的高度偏移，让文字以锚点为中心（字形框高 9px）。 */
 	private static final float GLYPH_HALF = 4.5f;
 
-	/** 阴影偏移：与游戏内文字一致，右下各 1 GUI 像素（与正文共面，无 Z 偏移）。 */
-	private static final float SHADOW_OFFSET = 1f;
-
-	/** 阴影亮度：与游戏内文字一致，RGB ×0.25（alpha 不变）。 */
-	private static final float SHADOW_DIM = 0.25f;
-
 	/** 单个字形的变换（GUI 像素位移 / 额外缩放 / 绕字形中心旋转 / 透明度）。 */
 	public static final class Glyph {
 		public float dx;
@@ -94,10 +88,14 @@ public final class WorldText3D {
 		int rgb = color & 0x00FFFFFF;
 		boolean drawn = false;
 		float cx = -font.width(text) / 2f; // 以锚点为中心
+		Matrix4f[] mats = new Matrix4f[text.length()];
+		int[] cols = new int[text.length()];
+		float[] ws = new float[text.length()];
 		for (int i = 0; i < text.length(); i++) {
 			Glyph g = glyphs != null && i < glyphs.length ? glyphs[i] : null;
 			String ch = String.valueOf(text.charAt(i));
 			float w = font.width(ch);
+			ws[i] = w;
 			float a = clamp((g == null ? 1f : g.alpha) * alphaMul);
 			if (a > 0.02f) {
 				float dx = (g == null ? 0f : g.dx) + offX;
@@ -112,16 +110,32 @@ public final class WorldText3D {
 				if (g != null && g.rot != 0f) {
 					m.rotateZ(g.rot);
 				}
-				int col = (Math.round(baseA * a) << 24) | rgb;
-				// 交给原版单次 drawInBatch 的 dropShadow：原版会在同一缓冲内先画阴影、再画正文，
-				// 顺序有保证（阴影永远在正文之下），并配合 POLYGON_OFFSET（glPolygonOffset(-1,-10)
-				// 把整个字形深度偏向相机）提升远距离深度精度。
-				// 阴影参与深度测试 → 会被挡在文字前的实体/方块正确遮挡，不再"穿墙/穿实体"。
-				font.drawInBatch(ch, -w / 2f, -GLYPH_HALF, col, true, m, buffers,
-					Font.DisplayMode.POLYGON_OFFSET, 0, LightCoordsUtil.FULL_BRIGHT);
-				drawn = true;
+				mats[i] = m;
+				cols[i] = (Math.round(baseA * a) << 24) | rgb;
 			}
 			cx += w;
+		}
+
+		// 阴影与正文分两批提交：POLYGON_OFFSET 渲染类型同样带 sortOnUpload，同一批内会被按
+		// 「到相机距离升序」重排 —— 阴影因 +1,+1 侧向偏移到相机略远，会被排到正文之后画而压在上方。
+		// 分批判刷后跨批按提交顺序绘制，阴影必定先画，且不需要任何几何偏置。
+		MultiBufferSource.BufferSource batch = buffers instanceof MultiBufferSource.BufferSource b ? b : null;
+		boolean vanillaShadow = true;
+		if (batch != null) {
+			for (int i = 0; i < mats.length; i++) {
+				if (mats[i] == null) continue;
+				font.drawInBatch(String.valueOf(text.charAt(i)), -ws[i] / 2f + 1f, -GLYPH_HALF + 1f,
+					shadowColor(cols[i]), false, mats[i], batch,
+					Font.DisplayMode.POLYGON_OFFSET, 0, LightCoordsUtil.FULL_BRIGHT);
+			}
+			batch.endBatch();
+			vanillaShadow = false;
+		}
+		for (int i = 0; i < mats.length; i++) {
+			if (mats[i] == null) continue;
+			font.drawInBatch(String.valueOf(text.charAt(i)), -ws[i] / 2f, -GLYPH_HALF, cols[i], vanillaShadow,
+				mats[i], buffers, Font.DisplayMode.POLYGON_OFFSET, 0, LightCoordsUtil.FULL_BRIGHT);
+			drawn = true;
 		}
 		return drawn;
 	}
@@ -180,6 +194,8 @@ public final class WorldText3D {
 		int baseA = (color >>> 24) & 0xFF;
 		int rgb = color & 0x00FFFFFF;
 		boolean drawn = false;
+		Matrix4f[] mats = new Matrix4f[chars.length];
+		int[] cols = new int[chars.length];
 		float cx = -total / 2f; // 以锚点为中心
 		for (int i = 0; i < chars.length; i++) {
 			Glyph g = glyphs != null && i < glyphs.length ? glyphs[i] : null;
@@ -197,40 +213,46 @@ public final class WorldText3D {
 				if (g != null && g.rot != 0f) {
 					m.rotateZ(g.rot);
 				}
-				int col = (Math.round(baseA * a) << 24) | rgb;
-				if (mode == Font.DisplayMode.SEE_THROUGH) {
-					// 穿透通道：阴影与正文用同一个渲染类型（都不做深度测试）。
-					// 阴影若参与深度测试，文字穿墙可见时阴影会被前面的方块/实体吃掉，
-					// 看起来就是"跳字在墙后没了阴影"；两者同为 see-through 才能始终成对出现。
-					// 阴影先提交、正文后提交，在同一缓冲里顺序有保证 → 正文稳定压在阴影之上；
-					// 1px 平面偏移 + 零 Z 位移保证两者共面，不会 z-fighting。
-					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, shadowColor(col), false,
-						new Matrix4f(m).translate(SHADOW_OFFSET, SHADOW_OFFSET, 0f), buffers,
-						Font.DisplayMode.SEE_THROUGH, 0, LightCoordsUtil.FULL_BRIGHT);
-					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
-						mode, 0, LightCoordsUtil.FULL_BRIGHT);
-				} else {
-					// 常规通道只补画正文（不带阴影）：它是与穿透通道配套的"遮挡"补画，
-					// 若再画阴影，阴影会落在穿透正文之后/与正文共面，重现 z-fighting 或压暗。
-					font.drawInBatch(chars[i], -w / 2f, -GLYPH_HALF, col, false, m, buffers,
-						mode, 0, LightCoordsUtil.FULL_BRIGHT);
-				}
-				drawn = true;
+				mats[i] = m;
+				cols[i] = (Math.round(baseA * a) << 24) | rgb;
 			}
 			cx += w;
+		}
+
+		// 先画阴影、后画正文，并且<b>分两批提交</b>。原因：单通道（现代 UI / 字体包）字体用的
+		// see-through 渲染类型带 sortOnUpload，会按「到相机距离升序」重排同一批内的片元；
+		// 阴影因 +1,+1 的偏移在侧向 → 到相机略远 → 会被排到正文之后画，于是"阴影压到文字上面"。
+		// 上传排序只作用于同一批，跨批按提交顺序绘制，所以刷一次缓冲即可保证阴影在正文之下，
+		// 且不需要任何几何/深度偏置（不会有阴影偏移或消失的副作用）。
+		MultiBufferSource.BufferSource batch = buffers instanceof MultiBufferSource.BufferSource b ? b : null;
+		// 只有穿透通道画阴影：常规通道是配套的"遮挡"补画，阴影已由穿透那遍画过
+		boolean withShadow = mode == Font.DisplayMode.SEE_THROUGH;
+		if (withShadow && batch != null) {
+			for (int i = 0; i < mats.length; i++) {
+				if (mats[i] == null) continue;
+				font.drawInBatch(chars[i], -widths[i] / 2f + 1f, -GLYPH_HALF + 1f, shadowColor(cols[i]), false,
+					mats[i], batch, mode, 0, LightCoordsUtil.FULL_BRIGHT);
+			}
+			batch.endBatch();
+			withShadow = false; // 已分批画好
+		}
+		// 正文；拿不到 BufferSource（无法分批判刷）时退回原版内置 dropShadow，尽力而为
+		boolean vanillaShadow = withShadow;
+		for (int i = 0; i < mats.length; i++) {
+			if (mats[i] == null) continue;
+			font.drawInBatch(chars[i], -widths[i] / 2f, -GLYPH_HALF, cols[i], vanillaShadow,
+				mats[i], buffers, mode, 0, LightCoordsUtil.FULL_BRIGHT);
+			drawn = true;
 		}
 		return drawn;
 	}
 
-	private static float clamp(float v) {
-		return Math.max(0f, Math.min(1f, v));
+	/** 阴影色：与原版 dropShadow 完全一致（RGB 各取 1/4，alpha 不变）。 */
+	private static int shadowColor(int argb) {
+		return (argb & 0xFF000000) | ((argb & 0xFCFCFC) >> 2);
 	}
 
-	/** 阴影色：与原版 dropShadow 一致，RGB ×0.25，alpha 不变。 */
-	private static int shadowColor(int argb) {
-		return (argb & 0xFF000000)
-			| (Math.round(((argb >> 16) & 0xFF) * SHADOW_DIM) << 16)
-			| (Math.round(((argb >> 8) & 0xFF) * SHADOW_DIM) << 8)
-			| Math.round((argb & 0xFF) * SHADOW_DIM);
+	private static float clamp(float v) {
+		return Math.max(0f, Math.min(1f, v));
 	}
 }
