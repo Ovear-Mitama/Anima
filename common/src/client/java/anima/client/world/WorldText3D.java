@@ -12,6 +12,9 @@ import net.minecraft.world.phys.Vec3;
 
 import org.joml.Matrix4f;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import anima.engine.RenderModifier;
 
 /**
@@ -46,6 +49,42 @@ public final class WorldText3D {
 		public float scale = 1f;
 		public float rot; // 弧度
 		public float alpha = 1f;
+	}
+
+	/** 一段文本的逐字度量：拆分好的逐字序列、每个字的宽度与总宽。 */
+	private record TextMetrics(FormattedCharSequence[] chars, float[] widths, float total) {
+	}
+
+	private record MetricKey(String text, Style style) {
+	}
+
+	/** 逐字度量缓存：同一段文本每帧都会被绘制多次，缓存后不必重复拆分与测量。 */
+	private static final int METRIC_CACHE_SIZE = 512;
+	private static final Map<MetricKey, TextMetrics> METRICS = new LinkedHashMap<>(64, 0.75f, true) {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<MetricKey, TextMetrics> eldest) {
+			return size() > METRIC_CACHE_SIZE;
+		}
+	};
+
+	private static TextMetrics metricsFor(Font font, String text, Style style) {
+		MetricKey key = new MetricKey(text, style);
+		TextMetrics cached = METRICS.get(key);
+		if (cached != null) {
+			return cached;
+		}
+		int len = text.length();
+		FormattedCharSequence[] chars = new FormattedCharSequence[len];
+		float[] widths = new float[len];
+		float total = 0f;
+		for (int i = 0; i < len; i++) {
+			chars[i] = FormattedCharSequence.forward(String.valueOf(text.charAt(i)), style);
+			widths[i] = font.width(chars[i]);
+			total += widths[i];
+		}
+		TextMetrics metrics = new TextMetrics(chars, widths, total);
+		METRICS.put(key, metrics);
+		return metrics;
 	}
 
 	/** 整段文本 + {@link RenderModifier}（位移 / 缩放 / 透明度 / 颜色）的便捷重载。 */
@@ -182,15 +221,12 @@ public final class WorldText3D {
 			.translate((float) (x - cam.x), (float) (y - cam.y), (float) (z - cam.z))
 			.rotate(camera.rotation())
 			.scale(worldScale * s, -worldScale * s, worldScale * s);
-		// 逐字宽度（含样式带来的加粗宽度）先量好，才能把整段居中
-		FormattedCharSequence[] chars = new FormattedCharSequence[raw.length()];
-		float[] widths = new float[raw.length()];
-		float total = 0f;
-		for (int i = 0; i < raw.length(); i++) {
-			chars[i] = FormattedCharSequence.forward(String.valueOf(raw.charAt(i)), style);
-			widths[i] = font.width(chars[i]);
-			total += widths[i];
-		}
+		// 逐字宽度（含样式带来的加粗宽度）先量好，才能把整段居中。
+		// 度量按「文本 + 样式」缓存，避免每帧为同一段文字重复拆分与测量。
+		TextMetrics metrics = metricsFor(font, raw, style);
+		FormattedCharSequence[] chars = metrics.chars();
+		float[] widths = metrics.widths();
+		float total = metrics.total();
 		int baseA = (color >>> 24) & 0xFF;
 		int rgb = color & 0x00FFFFFF;
 		boolean drawn = false;
