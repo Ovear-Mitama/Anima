@@ -20,8 +20,8 @@ import anima.engine.AnimationEngine;
 import anima.platform.NeoForgePlatformHooks;
 import anima.platform.PlatformHooks;
 
-/** NeoForge entrypoint. */
-@Mod("anima")
+/** NeoForge entrypoint. Client-only: 该入口引用了 Minecraft 等客户端类，专用服务端不能构造。 */
+@Mod(value = "anima", dist = Dist.CLIENT)
 public class AnimaNeoForge {
 	private final NeoForgePlatformHooks hooks = new NeoForgePlatformHooks();
 
